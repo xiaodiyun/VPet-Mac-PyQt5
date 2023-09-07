@@ -1,6 +1,6 @@
 # VPet-Mac
 
-文档传送门：[中文](https://github.com/LorisYounger/VPet) |
+文档传送门：[中文](https://github.com/xiaodiyun/VPet-Mac-PyQt5) |
 [English](https://translate.google.com.hk/?sl=zh-CN&tl=en)
 
 虚拟桌宠模拟器mac版，用pyqt5实现。 <br/>
@@ -25,8 +25,9 @@
 ### 当前进度
 搭好了框架，目前仅有startup和common两种动作
 ### 后续开发计划
-加入走路，攀爬，提起，工作等基本动作。再后续看心情。
-9月10日没更新走路攀爬和提起的话，我是狗
+- 加入走路，攀爬，提起，工作等基本动作。
+- 9月10日没更新走路攀爬和提起的话，我是狗
+- 再后续看心情。
 
 ### 一些问题
 python似乎无法越过mac的权限，实现在全部窗口置顶的效果（不过好像可以通过第三方软件进行置顶），所以只能在桌面置顶。如果有方法的话请告诉我
