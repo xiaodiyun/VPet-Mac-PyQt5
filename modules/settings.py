@@ -22,7 +22,7 @@ FALL_VY=[4,4]
 
 #普通无交互情况下，做事权重
 COMMON_ACTION_WEIGHT={
-    ActionType.DEFAULT:1,
+    ActionType.DEFAULT:50,
     ActionType.MOVE:1,
     ActionType.STATEONE:5,
     ActionType.STATETWO:5,
