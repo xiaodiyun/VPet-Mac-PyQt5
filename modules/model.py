@@ -5,7 +5,7 @@ from .dict import Mood,ActionType,AnimatType
 from PyQt5.QtGui import QPixmap
 import os
 from dataclasses import dataclass
-import pprint
+from pprint import pprint
 import random
 
 
@@ -29,7 +29,10 @@ class BaseAction():
     animat_type: AnimatType
     mood: Mood
     graph_list: [Graph]
+    direction=0 #-1 左，1，右
     if_load=False
+    # shift_x=0 #相对位移，如果为负数则反方向，或许不应该在这里设置，因为需要支持随机行走、跟随行走等
+    # shift_y=0
 
     # def __init__(self, action_name:str,action_type: ActionType, animat_type: AnimatType,mood:Mood, png_list:[]):
     #     self.action_name = action_name
@@ -66,18 +69,23 @@ class ActionManager():
             cur_dir=(os.sep).join(graph_path.split(os.sep)[0:-1])
             if cur_dir!=last_dir:
                 path_pattern=graph_path.replace(os.sep,"_").upper()
-                action_type=self._judge_enum(path_pattern,ActionType,ActionType.COMMON)
-                mood = self._judge_enum(path_pattern, Mood, Mood.NORMAL)
+                action_type=self._judge_enum(path_pattern,ActionType,ActionType.DEFAULT)
+                mood = self._judge_enum(path_pattern, Mood, Mood.NOMAL)
                 animat_type = self._judge_enum(path_pattern, AnimatType, AnimatType.SINGLE)
                 graph_name=os.path.basename(graph_path)
-                action_name=graph_name.split("_")[0]
+                action_name=os.path.dirname(graph_path).replace(os.sep,"_").upper()
                 cur_gragh_list=[Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0]))]
-                self.action_list.append(BaseAction(action_name,action_type,animat_type,mood,cur_gragh_list))
+                action=BaseAction(action_name, action_type, animat_type, mood, cur_gragh_list)
+                if ".LEFT" in path_pattern:
+                    action.direction=-1
+                if ".RIGHT" in path_pattern:
+                    action.direction=1
+                self.action_list.append(action)
                 last_dir=cur_dir
             else:
                 graph_name = os.path.basename(graph_path)
                 cur_gragh_list.append(Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0])))
-        # pprint.pp(action_list)
+        # pprint.pp(self.action_list)
 
 
 
@@ -85,7 +93,7 @@ class ActionManager():
         if enum.__name__=='AnimatType': #AnimatType比较特殊
             if "_A_" in path_pattern:
                 return AnimatType.A_START
-            elif "_B_" in path_pattern:
+            elif "_B_" in path_pattern or "循环" in path_pattern:
                 return AnimatType.B_LOOP
             elif "_C_" in path_pattern:
                 return AnimatType.C_END
@@ -93,7 +101,7 @@ class ActionManager():
                 return AnimatType.SINGLE
         else:
             for i in enum:
-                if f"{i.name}_" in path_pattern:
+                if f"{i.name}_" in path_pattern or f"{i.name}." in path_pattern:
                     return i
 
             return default
@@ -101,83 +109,7 @@ class ActionManager():
 
 
 
-    def _init_actions_bak(self):
-        self.action_map={}
-        action_types=os.listdir(settings.ACTION_GRAPH_PATH)
 
-
-    #     for action_type in action_types:
-    #         path=os.path.join(settings.ACTION_GRAPH_PATH,action_type)
-    #         action_type=action_type.upper()
-    #         if os.path.isdir(path):
-    #
-    #             self.action_map.setdefault(ActionType[action_type],[])
-    #             action_list=self.action_map[ActionType[action_type]]
-    #             #
-    #
-    #
-    #             """
-    #             解析逻辑总结：
-    #             1.倒数第一层文件里面是同一个动画序列
-    #             2.路径包含 Happy,Normal等，就是触发心情
-    #             3.路径包含 A、B、C单独文件夹，或者A_、B_、C_就是动画类型，字典见AnimatType
-    #             4.部分需要特殊处理以区分动作名字
-    #             """
-    #             for root, dirs, files in os.walk(path):
-    #                 if len(dirs)<=0 and len(files)>0: #只看最后一层
-    #                     files.sort()
-    #                     graph_list=[]
-    #                     for file in files:
-    #                         graph_list.append(Graph(os.path.join(root,file),int(file.split("_")[-1].split(".")[0])))
-    #                     rootupper=root.upper()
-    #                     rootsplit = rootupper.split(os.sep)
-    #                     action_name = rootsplit[rootsplit.index(action_type) + 1]
-    #                     relative_path=rootupper.replace(settings.ACTION_GRAPH_PATH,"")
-    #                     animat_type=self._judge_animat_type(relative_path)
-    #                     mood=self._judge_mood(relative_path)
-    #
-    #                     #这个action_name暂时没用到
-    #                     if action_type  in ('RAISE','STATE'):
-    #                         action_type_name=action_name
-    #                     elif action_type=='SWITCH':
-    #                         action_type_name=action_type+"_"+action_name
-    #                     else:
-    #                         action_type_name=action_type
-    #                     action_list.append(BaseAction(action_name,ActionType[action_type_name],animat_type,mood,graph_list))
-    #
-    #     pprint.pprint(self.action_map)
-    #
-    #
-    #
-    # def _judge_if_path_contains(self,path_split,pattern)->bool:
-    #     return len([i for i in path_split if i.startswith(pattern+"_") or i.endswith("_"+pattern) or i==pattern]) > 0
-    #
-    # def _judge_animat_type(self,path)->AnimatType:
-    #     # path=path.upper()
-    #     path_split = path.split(os.sep)
-    #     if  self._judge_if_path_contains(path_split,'A'):
-    #         return AnimatType.A_START
-    #     elif self._judge_if_path_contains(path_split,'B'):
-    #         return AnimatType.B_LOOP
-    #     elif self._judge_if_path_contains(path_split,'C'):
-    #         return AnimatType.C_END
-    #     elif self._judge_if_path_contains(path_split,'SINGLE'):
-    #         return AnimatType.SINGLE
-    #     else:
-    #         return AnimatType.SINGLE
-    # def _judge_mood(self,path)->Mood:
-    #     # path = path.upper()
-    #     path_split = path.split(os.sep)
-    #     if self._judge_if_path_contains(path_split, 'NORMAL'):
-    #         return Mood.NORMAL
-    #     elif self._judge_if_path_contains(path_split, 'HAPPY'):
-    #         return Mood.HAPPY
-    #     elif self._judge_if_path_contains(path_split, 'POORCONDITION'):
-    #         return Mood.POORCONDITION
-    #     elif self._judge_if_path_contains(path_split, 'ILL'):
-    #         return Mood.ILL
-    #     else:
-    #         return Mood.NORMAL
 
 
 
@@ -209,13 +141,41 @@ class ActionManager():
             return v
         else:
             return v
-
-    def get_one_action(self,**param):
-        action_list=self.get_actions(**param)
-        action=random.choice(action_list)
+    def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None):
+        actions = self.get_actions(action_type, mood,animat_type)
+        if actions == None or actions == []:
+            return None
+        action = random.choice(actions)
         if not action.if_load:
-            action=action_manager.load_one_action(action)
+            action = action_manager.load_one_action(action)
         return action
+
+    def get_seq_actions(self,action_type:ActionType,mood:Mood=None):
+        animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START])
+        if animat_type==AnimatType.SINGLE:
+            action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
+            if action!=None:
+                return [action]
+        seq_actions=[]
+        start_action=self.get_one_action(action_type, mood, AnimatType.A_START)
+        if start_action:
+            seq_actions.append(start_action)
+        loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP)
+        if loop_action:
+            for i in range(random.randint(*settings.COMBO_ACTION_TIMES[action_type])):
+                seq_actions.append(loop_action)
+        end_action = self.get_one_action(action_type, mood, AnimatType.C_END)
+        if end_action:
+            seq_actions.append(end_action)
+        if len(seq_actions)==0:
+            single_action=self.get_one_action(action_type, mood, AnimatType.SINGLE)
+            if single_action:
+                return [self.get_one_action(action_type,mood,AnimatType.SINGLE)]
+            else:
+                return []
+        else:
+            return seq_actions
+
 
 
 
@@ -232,8 +192,9 @@ class Pet():
         self.x=settings.INIT_POS_X
         self.y=settings.INIT_POS_Y
         self.action_list=[]
-        self.add_action(self.choose_action(ActionType.STARTUP))
+        self.add_seq_actions(self.choose_seq_actions(ActionType.STARTUP))
         self.action_count=0
+        self.last_add_action=None
 
     def move(self,x,y):
         self.x=x
@@ -244,26 +205,48 @@ class Pet():
         为什么要不开心的呢？
         :return: 开心or开心的不明显
         """
-        mood=random.choice([Mood.HAPPY, Mood.NORMAL])
+        mood=random.choice([Mood.HAPPY, Mood.NOMAL])
         self.mood=mood
         return mood
 
     def next_action(self): #做事涉及到是否能被其他动作打断，暂时不考虑
-        self.cur_action=self.action_list.pop()
+        if len(self.action_list)==0:
+            self.add_seq_actions()
+        self.cur_action=self.action_list.pop(0)
         self.action_count=self.action_count+1
-        if self.action_count%10==0:
+        if self.action_count%20==0:
             self.change_mood()
         return self.cur_action
 
-    def add_action(self,action:BaseAction=None):
-        if  action==None:
-            self.action_list.append(self.choose_action(ActionType.DEFAULT))
-        else:
-            self.action_list.append(action)
+    def add_seq_actions(self,actions:[BaseAction]=None):
+        if  actions==None or actions==[]:
+            actions=self.choose_seq_actions(self._what_to_do())
+        #TODO 动作与动作之间可能需要default动作来过渡，不确定是不是所有动作都需要过渡
+        # if self.last_add_action!=None and self.last_add_action.action_type!=ActionType.DEFAULT:
+        #     self.action_list = self.action_list+self.choose_seq_actions(ActionType.DEFAULT)
+        # self.last_add_action=actions[0]
+        self.action_list=self.action_list+actions
 
-    def choose_action(self,action_type:ActionType):
-        self.cur_action=action_manager.get_one_action(action_type=action_type,mood=self.mood)
-        return self.cur_action
+    def choose_seq_actions(self,action_type:ActionType)->[BaseAction]:
+
+        actions=action_manager.get_seq_actions(action_type=action_type, mood=self.mood)
+
+        if actions==None or actions==[]:
+            actions=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
+        return actions
+
+
+
+
+    def _what_to_do(self)->ActionType: #有趣的课题，加权随机
+        total = sum(settings.COMMON_ACTION_WEIGHT.values())
+        r = random.uniform(0, total)
+        upto = 0
+        for action_type, weight in settings.COMMON_ACTION_WEIGHT.items():
+            if upto + weight >= r:
+                return action_type
+            upto += weight
+
 
 
 

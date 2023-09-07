@@ -1,8 +1,7 @@
 import random
 import time
 
-import os
-import typing
+
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, Qt
@@ -70,11 +69,12 @@ class DesktopPet(QMainWindow):
     def play(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.one_action)
-        self.timer.start(0)
+        self.timer.start()
 
     def one_action(self):
         self.timer.stop()
         action=self.pet.next_action() #type:BaseAction
+        print(action)
         for graph in action.graph_list:
             self.pixmap = graph.pixmap
             QApplication.processEvents()
@@ -82,7 +82,7 @@ class DesktopPet(QMainWindow):
             QApplication.processEvents()
             time.sleep(graph.duration/1000)
         # print("====")
-        self.pet.add_action()
+
         self.timer.start()
         # self.setPix(str(self.imgDir + "/摸头_000_125.png"))
 

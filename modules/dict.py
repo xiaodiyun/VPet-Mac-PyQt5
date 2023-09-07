@@ -2,17 +2,19 @@ from enum import Enum
 
 
 
-Mood=Enum("Mood",("HAPPY","NORMAL","POORCONDITION","ILL"))
+Mood=Enum("Mood",("HAPPY","NOMAL","POORCONDITION","ILL"))
 """
 心情
 """
 
 
 ActionType=Enum("ActionType",(
-    'COMMON',
-    'RAISED_DYNAMIC',
+    'RAISED_DYNAMIC',  #提起
     'RAISED_STATIC',
-    'MOVE',
+
+    'CLIMB',  #climb单独分类
+    "FALL",
+    'MOVE',  # 走路、蠕动
     'DEFAULT',
     'TOUCH_HEAD',
     'TOUCH_BODY',
