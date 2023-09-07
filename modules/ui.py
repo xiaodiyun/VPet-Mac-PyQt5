@@ -16,6 +16,7 @@ class DesktopPet(QMainWindow):
         self.pet = Pet()  # 初始化宠物对象
         self.initUI()  # 初始化界面
         self.play()  # 开始播放动画
+        self.is_pressed = False  # 鼠标是否按下
 
     def initUI(self):
         self.desktop = QApplication.desktop()  # 获取桌面对象
@@ -31,13 +32,19 @@ class DesktopPet(QMainWindow):
         self.pet.move(ax, ay)
 
     def mousePressEvent(self, event):
-        pass
+        """鼠标按下事件"""
+        # 判断是否点击了宠物
+        if self.pet.x <= event.globalX() <= self.pet.x + settings.WINDOW_WIDTH and self.pet.y <= event.globalY() <= self.pet.y + settings.WINDOW_HEIGHT:
+            self.is_pressed = True  # 设置鼠标按下标志
 
     def mouseReleaseEvent(self, event):
-        pass
+        """鼠标释放事件"""
+        self.is_pressed = False  # 设置鼠标按下标志
 
     def mouseMoveEvent(self, event):
-        pass
+        if self.is_pressed:  # 如果鼠标按下
+            self.move(event.globalX() - settings.WINDOW_WIDTH / 2,
+                      event.globalY() - settings.WINDOW_HEIGHT / 2)  # 移动窗口和宠物对象到指定位置
 
     def mouseDoubleClickEvent(self, QMouseEvent): pass  # 鼠标双击事件不做处理
     def closeEvent(self, QCloseEvent): pass  # 关闭窗口事件不做处理
