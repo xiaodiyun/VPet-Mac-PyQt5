@@ -1,0 +1,10 @@
+
+WINDOW_HEIGHT=150 #窗口高度
+WINDOW_WIDTH=150 #窗口宽度
+
+
+INIT_POS_X=1300 #初始出现在哪
+INIT_POS_Y=650
+
+
+ACTION_GRAPH_PATH="mod/0000_core/pet/vup" #图在哪
