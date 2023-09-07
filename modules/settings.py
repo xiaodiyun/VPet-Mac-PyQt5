@@ -22,7 +22,7 @@ FALL_VY=[4,4]
 
 #普通无交互情况下，做事权重
 COMMON_ACTION_WEIGHT={
-    ActionType.DEFAULT:50,
+    ActionType.DEFAULT:1,
     ActionType.MOVE:1,
     ActionType.STATEONE:5,
     ActionType.STATETWO:5,
@@ -37,7 +37,7 @@ COMBO_ACTION_TIMES={
     ActionType.FALL:[30,30], #一般来说是落地之后自动打断，不存在循环次数
     ActionType.STATEONE:[30,60],
     ActionType.STATETWO:[30,60],
-    ActionType.SAY:[10,20],
+    ActionType.SAY:[2,4],
     ActionType.IDEL:[10,20], #很可爱！
 
 }

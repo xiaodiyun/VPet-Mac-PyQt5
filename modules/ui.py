@@ -74,9 +74,10 @@ class DesktopPet(QMainWindow):
     def one_action(self):
         self.timer.stop()
         action=self.pet.next_action() #type:BaseAction
-        print(action)
+        # print(action)
         for graph in action.graph_list:
             self.pixmap = graph.pixmap
+            print(graph)
             QApplication.processEvents()
             self.update()
             QApplication.processEvents()

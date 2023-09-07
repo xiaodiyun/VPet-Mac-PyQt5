@@ -54,6 +54,7 @@ class ActionManager():
 
     """
     看上去，同情绪，同类型的动作，可以从start-loop-end顺着找
+    不是，需要在同类型文件夹下面，暂且归纳为ABC的上一级目录中顺着找
     """
     def _init_actions(self):
         graph_list = []
