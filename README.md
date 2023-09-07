@@ -1,4 +1,7 @@
-# VPet-PyQyt5-For-Mac-M1
+# VPet-Mac
+
+文档传送门：[中文](https://github.com/LorisYounger/VPet) |
+[English](https://translate.google.com.hk/?sl=zh-CN&tl=en)
 
 虚拟桌宠模拟器mac版，用pyqt5实现。 <br/>
 
@@ -16,7 +19,7 @@
 - qt 版本 5.15.7
 - python 版本 3.8
 
-盲猜windows跑不通，因为弱智 mac m1 需要添加一些额外代码来驾驶pyqt5，尤其是透明背景。提 pr 我也没办法验证，除非你给我买一台 windows 电脑
+盲猜windows跑不通，因为弱智 mac m1 需要添加一些额外代码来驾驶pyqt5，尤其是透明背景。提 pr 我也没办法验证，除非v我一台 windows 电脑
 
 
 ### 当前进度
