@@ -62,6 +62,7 @@ class DesktopPet(QMainWindow):
         painter = QPainter(self)
         if hasattr(self, "pixmap"):
             painter.drawPixmap(self.rect(), self.pixmap)
+
         # painter.drawPixmap(self.rect(), self.pixmap)
 
 
@@ -74,15 +75,19 @@ class DesktopPet(QMainWindow):
     def one_action(self):
         self.timer.stop()
         action=self.pet.next_action() #type:BaseAction
-        # print(action)
+        last_graph_duration=0
         for graph in action.graph_list:
+            # time.sleep(graph.duration / 1000)
             self.pixmap = graph.pixmap
             print(graph)
             QApplication.processEvents()
             self.update()
             QApplication.processEvents()
-            time.sleep(graph.duration/1000)
-        # print("====")
+            time.sleep(last_graph_duration / 1000)
+            last_graph_duration=graph.duration
+
+
+        print("====")
 
         self.timer.start()
         # self.setPix(str(self.imgDir + "/摸头_000_125.png"))
