@@ -19,6 +19,7 @@ class DesktopPet(QMainWindow):
         self.pet=Pet()
         self.initUI()
         self.play()
+        self.last_graph_duration = 0
 
 
     def initUI(self):
@@ -70,12 +71,12 @@ class DesktopPet(QMainWindow):
     def play(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.one_action)
-        self.timer.start(100)
+        self.timer.start() #是否要改成随机，待测试
 
     def one_action(self):
         self.timer.stop()
         action=self.pet.next_action() #type:BaseAction
-        last_graph_duration=0
+
         for graph in action.graph_list:
             # time.sleep(graph.duration / 1000)
             self.pixmap = graph.pixmap
@@ -83,8 +84,8 @@ class DesktopPet(QMainWindow):
             QApplication.processEvents()
             self.update()
             QApplication.processEvents()
-            time.sleep(last_graph_duration / 1000)
-            last_graph_duration=graph.duration
+            time.sleep(self.last_graph_duration / 1000)
+            self.last_graph_duration=graph.duration
 
 
         print("====")
