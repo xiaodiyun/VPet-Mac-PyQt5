@@ -74,7 +74,19 @@ class ActionManager():
                 mood = self._judge_enum(path_pattern, Mood, Mood.NOMAL)
                 animat_type = self._judge_enum(path_pattern, AnimatType, AnimatType.SINGLE)
                 graph_name=os.path.basename(graph_path)
-                action_name=os.path.dirname(graph_path).replace(os.sep,"_").upper()
+
+                if animat_type==AnimatType.A_START:
+                    action_name=path_pattern.split("_A_")[0]
+                elif animat_type==AnimatType.B_LOOP:
+                    action_name = path_pattern.split("_B_")[0]
+                    if action_name==path_pattern:
+                        action_name = path_pattern.split("循环")[0]
+                elif animat_type==AnimatType.C_END:
+                    action_name = path_pattern.split("_C_")[0]
+                else:
+                    action_name= path_pattern.split("_SINGLE_")[0]
+
+                # action_name=os.path.dirname(graph_path).replace(os.sep,"_").upper()
                 cur_gragh_list=[Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0]))]
                 action=BaseAction(action_name, action_type, animat_type, mood, cur_gragh_list)
                 if ".LEFT" in path_pattern:
@@ -86,7 +98,7 @@ class ActionManager():
             else:
                 graph_name = os.path.basename(graph_path)
                 cur_gragh_list.append(Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0])))
-        # pprint.pp(self.action_list)
+        # pprint(self.action_list)
 
 
 
@@ -127,23 +139,23 @@ class ActionManager():
         action.if_load=True
         return action
 
-    def get_actions(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None):
+    def get_actions(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
         """
         根据心情和动画类型，获取动作
         """
         assert action_type!=None,"必须选定动画类型"
-        k=(action_type,mood,animat_type)
+        k=(action_type,mood,animat_type,action_name)
         v=self.search_cache.get(k)
         if v==None:
             v=list(filter(lambda action: (action.action_type == action_type or action_type == None) and (
-                        action.mood == mood or mood == None) and (action.animat_type == animat_type or animat_type == None),
+                        action.mood == mood or mood == None) and (action.animat_type == animat_type or animat_type == None)  and (action.action_name==action_name or action_name==None),
                         self.action_list))
             self.search_cache[k]=v
             return v
         else:
             return v
-    def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None):
-        actions = self.get_actions(action_type, mood,animat_type)
+    def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
+        actions = self.get_actions(action_type, mood,animat_type,action_name)
         if actions == None or actions == []:
             return None
         action = random.choice(actions)
@@ -159,13 +171,16 @@ class ActionManager():
                 return [action]
         seq_actions=[]
         start_action=self.get_one_action(action_type, mood, AnimatType.A_START)
+        action_name=None
         if start_action:
+            action_name=start_action.action_name
             seq_actions.append(start_action)
-        loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP)
+        loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP,action_name)
         if loop_action:
+            action_name = loop_action.action_name
             for i in range(random.randint(*settings.COMBO_ACTION_TIMES[action_type])):
                 seq_actions.append(loop_action)
-        end_action = self.get_one_action(action_type, mood, AnimatType.C_END)
+        end_action = self.get_one_action(action_type, mood, AnimatType.C_END,action_name)
         if end_action:
             seq_actions.append(end_action)
         if len(seq_actions)==0:

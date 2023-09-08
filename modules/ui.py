@@ -70,7 +70,7 @@ class DesktopPet(QMainWindow):
     def play(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.one_action)
-        self.timer.start()
+        self.timer.start(100)
 
     def one_action(self):
         self.timer.stop()
