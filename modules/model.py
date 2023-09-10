@@ -34,13 +34,77 @@ class BaseAction():
     # shift_x=0 #相对位移，如果为负数则反方向，或许不应该在这里设置，因为需要支持随机行走、跟随行走等
     # shift_y=0
 
-    # def __init__(self, action_name:str,action_type: ActionType, animat_type: AnimatType,mood:Mood, png_list:[]):
-    #     self.action_name = action_name
-    #     self.action_type = action_type
-    #     self.animat_type = animat_type
-    #     self.mood=mood
-    #     self.png_list = png_list
+#动画序列
+@dataclass()
+class SeqAction():
+    start_action:BaseAction
+    loop_action:BaseAction
+    end_action:BaseAction
+    loop_times=1
+    cur_animat_type:AnimatType
+    next_animat_type:AnimatType
 
+    def __init__(self,start_action:BaseAction,loop_action:BaseAction,end_action:BaseAction):
+        assert start_action or loop_action or end_action
+        self.start_action=start_action
+        self.loop_action=loop_action
+        self.end_action=end_action
+
+        first_action=start_action or loop_action or end_action
+        if first_action.action_type not in settings.COMBO_ACTION_TIMES:
+            self.loop_times=1
+        else:
+            self.loop_times=random.randint(*settings.COMBO_ACTION_TIMES[first_action.action_type])
+        self.loop_count=1
+        self.cur_animat_type = None
+        self.next_animat_type = first_action.animat_type
+
+    def _next_animat_type(self,animat_type:AnimatType,loop_count:int)->AnimatType:
+
+        if animat_type==None or animat_type==AnimatType.C_END:
+            return None
+
+
+        if animat_type == AnimatType.A_START and self.loop_action:
+            return AnimatType.B_LOOP
+        else:
+            animat_type=AnimatType.B_LOOP
+
+        if animat_type == AnimatType.B_LOOP and self.loop_action:
+            if loop_count < self.loop_times:
+                return AnimatType.B_LOOP
+        if animat_type == AnimatType.B_LOOP and self.end_action:
+            return AnimatType.C_END
+        return None
+
+
+
+    def next_action(self)->BaseAction:
+        action=self._get_action(self.next_animat_type)
+        if action==None:
+            self.cur_animat_type=None
+            self.next_animat_type=None
+            return None
+        self.cur_animat_type=action.animat_type
+        if self.cur_animat_type ==AnimatType.B_LOOP:
+            self.loop_count=self.loop_count+1
+        self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
+        return action
+
+    def _get_action(self,animat_type:AnimatType)->BaseAction:
+        if animat_type==None:
+            return None
+        return_action=None
+        if animat_type==AnimatType.A_START:
+            return_action=self.start_action
+
+        elif animat_type in (AnimatType.B_LOOP,AnimatType.SINGLE):
+            return_action=self.loop_action
+
+        elif animat_type==AnimatType.C_END:
+            return_action=self.end_action
+
+        return return_action
 
 
 class ActionManager():
@@ -147,13 +211,14 @@ class ActionManager():
         k=(action_type,mood,animat_type,action_name)
         v=self.search_cache.get(k)
         if v==None:
-            v=list(filter(lambda action: (action.action_type == action_type or action_type == None) and (
-                        action.mood == mood or mood == None) and (action.animat_type == animat_type or animat_type == None)  and (action.action_name==action_name or action_name==None),
+            v=list(filter(lambda action: action_type in (action.action_type,None) and mood in(action.mood,None)
+                        and  animat_type in (action.animat_type,None)  and action_name in (action.action_name,None),
                         self.action_list))
             self.search_cache[k]=v
             return v
         else:
             return v
+
     def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
         actions = self.get_actions(action_type, mood,animat_type,action_name)
         if actions == None or actions == []:
@@ -163,34 +228,34 @@ class ActionManager():
             action = action_manager.load_one_action(action)
         return action
 
-    def get_seq_actions(self,action_type:ActionType,mood:Mood=None):
+    def get_seq_actions(self,action_type:ActionType,mood:Mood=None)->SeqAction:
         animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START])
         if animat_type==AnimatType.SINGLE:
             action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
             if action!=None:
-                return [action]
-        seq_actions=[]
+                return SeqAction(None,action,None)
         start_action=self.get_one_action(action_type, mood, AnimatType.A_START)
         action_name=None
         if start_action:
             action_name=start_action.action_name
-            seq_actions.append(start_action)
+
         loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP,action_name)
-        if loop_action:
+        if loop_action: #修改逻辑，具体循环次数由宠物类决定
             action_name = loop_action.action_name
-            for i in range(random.randint(*settings.COMBO_ACTION_TIMES[action_type])):
-                seq_actions.append(loop_action)
+            # for i in range(random.randint(*settings.COMBO_ACTION_TIMES[action_type])):
+
         end_action = self.get_one_action(action_type, mood, AnimatType.C_END,action_name)
-        if end_action:
-            seq_actions.append(end_action)
-        if len(seq_actions)==0:
+
+        if not (start_action or loop_action or end_action):
             single_action=self.get_one_action(action_type, mood, AnimatType.SINGLE)
             if single_action:
-                return [self.get_one_action(action_type,mood,AnimatType.SINGLE)]
+                return SeqAction(None,single_action,None)
             else:
-                return []
+                return None
         else:
-            return seq_actions
+            seq_action=SeqAction(start_action, loop_action, end_action)
+
+            return seq_action
 
 
 
@@ -204,17 +269,14 @@ class Pet():
 
     def __init__(self):
         self.change_mood()
-        self.cur_action=None
-        self.x=settings.INIT_POS_X
-        self.y=settings.INIT_POS_Y
-        self.action_list=[]
-        self.add_seq_actions(self.choose_seq_actions(ActionType.STARTUP))
-        self.action_count=0
-        self.last_add_action=None
+        self.cur_seq_action:SeqAction=self.get_seq_action(ActionType.STARTUP)
 
-    def move(self,x,y):
-        self.x=x
-        self.y=y
+        # self.seq_actions_list=[] #需要这个吗？
+
+        self.action_count=0 #动作总量计数器
+        # self.last_add_action=None
+        # self.status
+
 
     def change_mood(self):
         """
@@ -225,31 +287,53 @@ class Pet():
         self.mood=mood
         return mood
 
-    def next_action(self): #做事涉及到是否能被其他动作打断，暂时不考虑
-        if len(self.action_list)==0:
-            self.add_seq_actions()
-        self.cur_action=self.action_list.pop(0)
+    # def next_action(self,actions:[BaseAction],interrupt_level=0):
+    #     """
+    #     :param interrupt_level: 打断等级；0-不打断；1-立刻终止循环，播放完end动画后进入设定动画；2-立刻清空当前动画序列，添加新的动画
+    #     """
+    #     if interrupt_level==0:
+    #         self.action_list=actions+self.action_list
+    #         self.cur_action=self.action_list.pop(0)
+    #         return self.cur_action
+
+
+    def next_action(self,action_type:ActionType=None,animat_type:AnimatType=None): #做事涉及到是否能被其他动作打断，暂时不考虑
+        # 如果动作为空，或者动作序列为空，或者上一条动作是end，或者single动作超过计数器，则获取下一个动作序列，并开始第一个动作
+        # 如果当前动作为start，则下一个动作是loop
+        # 如果当前动作为loop，则决定下一个动作是loop还是end
+        if action_type!=None:
+            self.cur_seq_action=self.get_seq_action(action_type=action_type)
+
+        if self.cur_seq_action.next_animat_type==None:
+            self.cur_seq_action=self.get_seq_action(self._what_to_do())
+
+        self.cur_action=self.cur_seq_action.next_action()
+        # print(self.cur_action)
         self.action_count=self.action_count+1
         if self.action_count%20==0:
             self.change_mood()
         return self.cur_action
 
-    def add_seq_actions(self,actions:[BaseAction]=None):
-        if  actions==None or actions==[]:
-            actions=self.choose_seq_actions(self._what_to_do())
+    # def add_seq_action(self,seq_action:SeqAction):
+    #     if  seq_action==None:
+    #         seq_action=self.choose_seq_action(self._what_to_do())
+
         #TODO 动作与动作之间可能需要default动作来过渡，不确定是不是所有动作都需要过渡
-        # if self.last_add_action!=None and self.last_add_action.action_type!=ActionType.DEFAULT:
-        #     self.action_list = self.action_list+self.choose_seq_actions(ActionType.DEFAULT)
-        # self.last_add_action=actions[0]
-        self.action_list=self.action_list+actions
+        # self.seq_action_list=self.seq_action_list.append(seq_action)
 
-    def choose_seq_actions(self,action_type:ActionType)->[BaseAction]:
 
-        actions=action_manager.get_seq_actions(action_type=action_type, mood=self.mood)
+    def get_seq_action(self,action_type:ActionType)->SeqAction:
+        assert action_type!=None
+        seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood)
+        if seq_action==None:
+            seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
+        return seq_action
 
-        if actions==None or actions==[]:
-            actions=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
-        return actions
+    # def choose_one_actions(self):
+    #     pass
+    # """
+    # "提起"动作无法预设动作序列，
+    # """
 
 
 
@@ -260,8 +344,10 @@ class Pet():
         upto = 0
         for action_type, weight in settings.COMMON_ACTION_WEIGHT.items():
             if upto + weight >= r:
+                # print(action_type)
                 return action_type
             upto += weight
+
 
 
 
