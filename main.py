@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     app = QApplication(argv)
     pet = DesktopPet()
-    # pet.move(1300,650)
+
     pet.show()
 
     sys.exit(app.exec())

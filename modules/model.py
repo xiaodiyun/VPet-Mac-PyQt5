@@ -1,7 +1,7 @@
 
 from enum import Enum
 from . import settings
-from .dict import Mood,ActionType,AnimatType
+from .dict import Mood,ActionType,AnimatType,ActionStatus
 from PyQt5.QtGui import QPixmap
 import os
 from dataclasses import dataclass
@@ -29,10 +29,19 @@ class BaseAction():
     animat_type: AnimatType
     mood: Mood
     graph_list: [Graph]
+    graph_index=0
     direction=0 #-1 左，1，右
     if_load=False
     # shift_x=0 #相对位移，如果为负数则反方向，或许不应该在这里设置，因为需要支持随机行走、跟随行走等
     # shift_y=0
+    def next_graqh(self):
+        if self.graph_index<len(self.graph_list):
+            graph=self.graph_list[self.graph_index]
+            self.graph_index=self.graph_index+1
+            return graph
+        else:
+            self.graph_index=0
+            return None
 
 #动画序列
 @dataclass()
@@ -40,7 +49,7 @@ class SeqAction():
     start_action:BaseAction
     loop_action:BaseAction
     end_action:BaseAction
-    loop_times=1
+    loop_times=10000
     cur_animat_type:AnimatType
     next_animat_type:AnimatType
 
@@ -52,7 +61,7 @@ class SeqAction():
 
         first_action=start_action or loop_action or end_action
         if first_action.action_type not in settings.COMBO_ACTION_TIMES:
-            self.loop_times=1
+            self.loop_times=10000
         else:
             self.loop_times=random.randint(*settings.COMBO_ACTION_TIMES[first_action.action_type])
         self.loop_count=1
@@ -80,8 +89,10 @@ class SeqAction():
 
 
 
-    def next_action(self)->BaseAction:
-        action=self._get_action(self.next_animat_type)
+    def next_action(self,animat_type:AnimatType=None)->BaseAction:
+        if animat_type:
+            self.next_animat_type=animat_type
+        action=self.get_action(self.next_animat_type)
         if action==None:
             self.cur_animat_type=None
             self.next_animat_type=None
@@ -92,7 +103,7 @@ class SeqAction():
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
         return action
 
-    def _get_action(self,animat_type:AnimatType)->BaseAction:
+    def get_action(self,animat_type:AnimatType)->BaseAction:
         if animat_type==None:
             return None
         return_action=None
@@ -208,7 +219,8 @@ class ActionManager():
         k=(action_type,mood,animat_type,action_name)
         v=self.search_cache.get(k)
         if v==None:
-            v=list(filter(lambda action: action_type in (action.action_type,None) and mood in(action.mood,None)
+
+            v=list(filter(lambda action: action_type ==action.action_type and mood in(action.mood,None)
                         and  animat_type in (action.animat_type,None)  and action_name in (action.action_name,None),
                         self.action_list))
             self.search_cache[k]=v
@@ -228,7 +240,7 @@ class ActionManager():
         return action
 
     def get_seq_actions(self,action_type:ActionType,mood:Mood=None)->SeqAction:
-        animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START])
+        animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START]) #查不到没有start，上来就loop的
         if animat_type==AnimatType.SINGLE:
             action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
 
@@ -268,14 +280,30 @@ class Pet():
 
 
     def __init__(self):
+        self.cur_action:BaseAction = None
         self.change_mood()
-        self.cur_seq_action:SeqAction=self.get_seq_action(ActionType.STARTUP)
-
+        # self.cur_seq_action:SeqAction=self.get_seq_action(ActionType.STARTUP)
+        self.change_action(ActionType.STARTUP)
         # self.seq_actions_list=[] #需要这个吗？
 
         self.action_count=0 #动作总量计数器
 
+        # self.auto_action=True #是否自动进行动作，会被提起等动作打断，进入外部交互动作，比如提起
 
+    #
+        self.action_status=ActionStatus.DEFAULT
+        """
+        被提起、爬坡、行走、music、work、default
+        """
+
+
+
+
+
+    def change_action_status(self,action_status:ActionStatus=ActionStatus.DEFAULT):
+        self.action_status=action_status
+        # if action_status==ActionStatus.RAISE:
+        #     self.change_action(ActionType.RAISED_DYNAMIC)
 
     def change_mood(self):
         """
@@ -288,20 +316,43 @@ class Pet():
 
 
 
+    def change_action(self,action_type:ActionType=None,animat_type:AnimatType=None,interrupt=3):
+        """
+        宠物更改当前动作
+        :param action_type: 动作类型
+        :param animat_type: 动画类型
+        :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
+        :return:
+        """
+        if interrupt==3:
+            self.cur_seq_action=self.get_seq_action(action_type)
+            self.cur_action=self.cur_seq_action.next_action()
 
-    def next_action(self,action_type:ActionType=None,animat_type:AnimatType=None): #做事涉及到是否能被其他动作打断，暂时不考虑
 
-        if action_type!=None:
-            self.cur_seq_action=self.get_seq_action(action_type=action_type)
+    def next_action(self,animat_type:AnimatType=None)->BaseAction: #做事涉及到是否能被其他动作打断，暂时不考虑
 
-        if self.cur_seq_action.next_animat_type==None:
+        # if action_type!=None:
+        #     self.cur_seq_action=self.get_seq_action(action_type=action_type)
+        self.action_count = self.action_count + 1
+        if self.action_count%20==0:
+            self.change_mood()
+
+        if animat_type!=None:
+            self.cur_action = self.cur_seq_action.next_action(animat_type)
+
+
+            return self.cur_action
+
+        if self.cur_seq_action.next_animat_type==None: #此处有点问题，没配合上
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
 
         self.cur_action=self.cur_seq_action.next_action()
 
-        self.action_count=self.action_count+1
+
+
         if self.action_count%20==0:
             self.change_mood()
+
         return self.cur_action
 
 
@@ -328,6 +379,18 @@ class Pet():
 
 
 
+    def next_gragh(self):
+        if  self.cur_action:
+            graqh=self.cur_action.next_graqh()
+            return graqh
+            # if not graqh:
+            #     self.next_action()
+            #     # print("aaa")
+            #     return self.next_gragh()
+            # return graqh
+        else:
+            # self.next_action()
+            return None
 
 
 

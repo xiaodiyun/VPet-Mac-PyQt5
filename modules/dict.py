@@ -15,8 +15,8 @@ class Mood(Enum):
 
 
 class ActionType(Enum):
-    RAISED_DYNAMIC=1  # 提起
-    RAISED_STATIC=2
+    RAISED=1  # 提起
+
 
     CLIMB=3  # climb单独分类
     FALL=4
@@ -54,5 +54,10 @@ class AnimatType(Enum):
     C_END=4
 
 
-
+class ActionStatus:
+    DEFAULT=1
+    MOVE=2
+    WORK=4
+    MUSIC=5
+    RAISE=6
 
