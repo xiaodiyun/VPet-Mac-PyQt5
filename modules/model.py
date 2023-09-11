@@ -60,7 +60,8 @@ class SeqAction():
         self.next_animat_type = first_action.animat_type
 
     def _next_animat_type(self,animat_type:AnimatType,loop_count:int)->AnimatType:
-
+        if animat_type==AnimatType.SINGLE:
+            return None
         if animat_type==None or animat_type==AnimatType.C_END:
             return None
 
@@ -116,10 +117,6 @@ class ActionManager():
         self.search_cache={}
 
 
-    """
-    看上去，同情绪，同类型的动作，可以从start-loop-end顺着找
-    不是，需要在同类型文件夹下面，暂且归纳为ABC的上一级目录中顺着找（上一级目录为名字，这样按名字区分）
-    """
     def _init_actions(self):
         graph_list = []
         for root, dirs, files in os.walk(settings.ACTION_GRAPH_PATH):
@@ -225,15 +222,19 @@ class ActionManager():
             return None
         action = random.choice(actions)
         if not action.if_load:
+
             action = action_manager.load_one_action(action)
+
         return action
 
     def get_seq_actions(self,action_type:ActionType,mood:Mood=None)->SeqAction:
         animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START])
         if animat_type==AnimatType.SINGLE:
             action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
+
             if action!=None:
                 return SeqAction(None,action,None)
+
         start_action=self.get_one_action(action_type, mood, AnimatType.A_START)
         action_name=None
         if start_action:
@@ -242,7 +243,6 @@ class ActionManager():
         loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP,action_name)
         if loop_action: #修改逻辑，具体循环次数由宠物类决定
             action_name = loop_action.action_name
-            # for i in range(random.randint(*settings.COMBO_ACTION_TIMES[action_type])):
 
         end_action = self.get_one_action(action_type, mood, AnimatType.C_END,action_name)
 
@@ -274,8 +274,7 @@ class Pet():
         # self.seq_actions_list=[] #需要这个吗？
 
         self.action_count=0 #动作总量计数器
-        # self.last_add_action=None
-        # self.status
+
 
 
     def change_mood(self):
@@ -287,20 +286,11 @@ class Pet():
         self.mood=mood
         return mood
 
-    # def next_action(self,actions:[BaseAction],interrupt_level=0):
-    #     """
-    #     :param interrupt_level: 打断等级；0-不打断；1-立刻终止循环，播放完end动画后进入设定动画；2-立刻清空当前动画序列，添加新的动画
-    #     """
-    #     if interrupt_level==0:
-    #         self.action_list=actions+self.action_list
-    #         self.cur_action=self.action_list.pop(0)
-    #         return self.cur_action
+
 
 
     def next_action(self,action_type:ActionType=None,animat_type:AnimatType=None): #做事涉及到是否能被其他动作打断，暂时不考虑
-        # 如果动作为空，或者动作序列为空，或者上一条动作是end，或者single动作超过计数器，则获取下一个动作序列，并开始第一个动作
-        # 如果当前动作为start，则下一个动作是loop
-        # 如果当前动作为loop，则决定下一个动作是loop还是end
+
         if action_type!=None:
             self.cur_seq_action=self.get_seq_action(action_type=action_type)
 
@@ -308,18 +298,12 @@ class Pet():
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
 
         self.cur_action=self.cur_seq_action.next_action()
-        # print(self.cur_action)
+
         self.action_count=self.action_count+1
         if self.action_count%20==0:
             self.change_mood()
         return self.cur_action
 
-    # def add_seq_action(self,seq_action:SeqAction):
-    #     if  seq_action==None:
-    #         seq_action=self.choose_seq_action(self._what_to_do())
-
-        #TODO 动作与动作之间可能需要default动作来过渡，不确定是不是所有动作都需要过渡
-        # self.seq_action_list=self.seq_action_list.append(seq_action)
 
 
     def get_seq_action(self,action_type:ActionType)->SeqAction:
@@ -329,11 +313,6 @@ class Pet():
             seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
         return seq_action
 
-    # def choose_one_actions(self):
-    #     pass
-    # """
-    # "提起"动作无法预设动作序列，
-    # """
 
 
 
@@ -344,7 +323,6 @@ class Pet():
         upto = 0
         for action_type, weight in settings.COMMON_ACTION_WEIGHT.items():
             if upto + weight >= r:
-                # print(action_type)
                 return action_type
             upto += weight
 

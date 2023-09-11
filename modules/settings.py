@@ -23,7 +23,7 @@ FALL_VY=[4,4]
 #普通无交互情况下，做事权重
 #TODO 考虑key改成元祖形式，这样可以更精细控制某些动作频率，以及屏蔽某些动作（设为0）
 COMMON_ACTION_WEIGHT={
-    ActionType.DEFAULT:40,
+    ActionType.DEFAULT:20,
     ActionType.MOVE:3,
     ActionType.STATEONE:5,
     ActionType.STATETWO:5,
@@ -32,14 +32,14 @@ COMMON_ACTION_WEIGHT={
 }
 #动作循环时，循环次数倾向
 COMBO_ACTION_TIMES={
-    ActionType.DEFAULT:[10,20],
-    ActionType.MOVE:[10,50], #一直爬！爬到边缘被打断并进入climb
-    ActionType.CLIMB:[30,30], #一直爬！爬到边缘被打断并进入climb
-    ActionType.FALL:[30,30], #一般来说是落地之后自动打断，不存在循环次数
-    ActionType.STATEONE:[30,60],
-    ActionType.STATETWO:[30,60],
+    ActionType.DEFAULT:[6,10],
+    ActionType.MOVE:[5,8], #一直爬！爬到边缘被打断并进入climb
+    ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
+    ActionType.FALL:[6,10], #一般来说是落地之后自动打断，不存在循环次数
+    ActionType.STATEONE:[6,10],
+    ActionType.STATETWO:[6,10],
     ActionType.SAY:[2,4],
-    ActionType.IDEL:[10,20], #很可爱！
+    ActionType.IDEL:[4,6], #很可爱！
 }
 
 # COMBO_ACTION_TIMES={
