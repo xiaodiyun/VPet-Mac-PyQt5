@@ -2,7 +2,7 @@
 from enum import Enum
 from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
-from PyQt5.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap
 import os
 from dataclasses import dataclass
 from pprint import pprint

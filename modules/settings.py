@@ -23,7 +23,7 @@ FALL_VY=[4,4]
 #普通无交互情况下，做事权重
 #TODO 考虑key改成元祖形式，这样可以更精细控制某些动作频率，以及屏蔽某些动作（设为0）
 COMMON_ACTION_WEIGHT={
-    ActionType.DEFAULT:20,
+    ActionType.DEFAULT:8,
     ActionType.MOVE:3,
     ActionType.STATEONE:5,
     ActionType.STATETWO:5,
