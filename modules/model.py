@@ -52,6 +52,7 @@ class SeqAction():
     loop_times=10000
     cur_animat_type:AnimatType
     next_animat_type:AnimatType
+    loop_change:False #部分循环支持同类型循环互替，比如raise
 
     def __init__(self,start_action:BaseAction,loop_action:BaseAction,end_action:BaseAction):
         assert start_action or loop_action or end_action
@@ -100,6 +101,8 @@ class SeqAction():
         self.cur_animat_type=action.animat_type
         if self.cur_animat_type ==AnimatType.B_LOOP:
             self.loop_count=self.loop_count+1
+            if self.loop_count%3==0 and self.loop_action.action_type==ActionType.RAISED:#部分动作支持循环之间相互替换
+                self.loop_action=action_manager.get_one_action(ActionType.RAISED,self.loop_action.mood,AnimatType.B_LOOP)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
         return action
 

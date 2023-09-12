@@ -3,7 +3,7 @@ import time
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, Qt, QPoint,QThread,pyqtSignal
-from PyQt5.QtGui import QPainter,QColor
+from PyQt5.QtGui import QPainter,QColor,QCursor
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from . import settings
@@ -50,7 +50,8 @@ class DesktopPet(QMainWindow):
         # 撞墙
 
     def raise_pet(self):
-
+        # delta_x=QCursor.pos().x()
+        # self.move(QCursor.pos())
         # if self.pet.cur_action.action_type not in (ActionType.RAISED_DYNAMIC,ActionType.RAISED_STATIC):
             #此处需要立刻进入提起状态，但是行动信号可能还在sleep，所以此时需要接管行动信号来立刻进入下一个动作
         self.pet.change_action_status(ActionStatus.RAISE)
