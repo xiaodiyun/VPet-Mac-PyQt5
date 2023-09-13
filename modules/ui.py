@@ -3,7 +3,7 @@ import time
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTimer, QPoint,QThread,pyqtSignal,Qt
-from PyQt5.QtGui import QPainter,QColor,QCursor,QPen,QBrush,QImage,QPalette
+from PyQt5.QtGui import QPainter,QCursor
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from . import settings
@@ -54,6 +54,7 @@ class DesktopPet(QMainWindow):
         self.move_to(new_pos)
         
     def move_to(self, a0: QtCore.QPoint) -> None:
+
         super().move(a0)
         # 撞墙
 
@@ -137,9 +138,9 @@ class DesktopPet(QMainWindow):
            https://bugreports.qt.io/browse/QTBUG-42827
            https://stackoverflow.com/questions/30728820/refreshing-a-qwidget
            """
-        if hasattr(self, "pixmap"):
+        if hasattr(self, "qimage"):
             painter = QPainter(self)
-            painter.drawImage(self.rect(), self.pixmap)
+            painter.drawImage(self.rect(), self.qimage)
 
 
 
@@ -152,8 +153,8 @@ class DesktopPet(QMainWindow):
 
 
 
-    def one_action(self,pixmap):
-        self.pixmap=pixmap
+    def one_action(self,qimage):
+        self.qimage=qimage
         self.update()
 
         if self.pet.cur_action.action_type==ActionType.MOVE:
@@ -208,9 +209,9 @@ class PetThread(QThread):
                 continue
             if self.pet.action_count == 0 and self.pet.cur_action.graph_index==1:
                 time.sleep(0.5)  # 感觉像是什么东西没有加载完全？总之添加这个可以有效解决第一个图片有边缘覆盖不了的问题，也许只有垃圾mac会遇到这样的问题
-            pixmap = graph.pixmap
+            qimage = graph.qimage
 
-            self.signal.emit(pixmap)
+            self.signal.emit(qimage)
             QThread.msleep(graph.duration)
     def close(self,force=False):
         if not force:

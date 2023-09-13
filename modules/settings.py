@@ -1,27 +1,60 @@
 from .dict import ActionType
-WINDOW_HEIGHT=150 #窗口高度
-WINDOW_WIDTH=150 #窗口宽度
+from PyQt5.QtWidgets import QApplication
 
 
-INIT_POS_X=1250 #初始出现在哪，或者随机？
+
+
+screen=QApplication.desktop().screenGeometry()
+
+
+SCREEN_HEIGHT=screen.height()
+"""
+屏幕高度（因为有些mac会开底部菜单，所以需要手动设置偏移）
+"""
+SCREEN_WIDTH=screen.width()
+"""
+屏幕宽度
+"""
+
+
+WINDOW_HEIGHT=150
+"""
+宠物窗口高度
+"""
+WINDOW_WIDTH=150
+"""
+宠物窗口宽度
+"""
+
+
+INIT_POS_X=1250
+"""
+宠物初始出现x轴坐标，也可以设置为随机： `random.randint(0,SCREEN_WIDTH)`
+"""
 INIT_POS_Y=650
+"""
+宠物初始出现x轴坐标，也可以设置为随机： `random.randint(0,SCREEN_HEIGHT)`
+"""
 
-
-ACTION_GRAPH_PATH="mod/0000_core/pet/vup" #图在哪
+ACTION_GRAPH_PATH="mod/0000_core/pet/vup"
+"""
+宠物动作序列图片位置
+"""
 
 CLIMB_V=[2,3] #每帧移动距离，不支持多向移动
 
 MOVE_VX=[2,3]
+"""移动动作下，每50毫秒移动x轴距离"""
+
 MOVE_VY=[-1,1]
+"""移动动作下，每50毫秒移动y轴距离"""
 
 FALL_VX=[3,3]
 FALL_VY=[4,4]
 
-# WALK_VX=[4,4]
-# WALK_VY=[0,1]
 
-#普通无交互情况下，做事权重
-#TODO 考虑key改成元祖形式，这样可以更精细控制某些动作频率，以及屏蔽某些动作（设为0）
+
+
 COMMON_ACTION_WEIGHT={
     ActionType.DEFAULT:8,
     ActionType.MOVE:50,
@@ -30,7 +63,11 @@ COMMON_ACTION_WEIGHT={
     ActionType.SAY:1,
     ActionType.IDEL:8
 }
-#动作循环时，循环次数倾向
+"""
+在空闲状态下，宠物随机做事的权重，可以自己更改权重，也可以删减动作
+"""
+
+
 COMBO_ACTION_TIMES={
     ActionType.DEFAULT:[6,10],
     ActionType.MOVE:[5,8], #一直爬！爬到边缘被打断并进入climb
@@ -41,6 +78,9 @@ COMBO_ACTION_TIMES={
     ActionType.SAY:[2,4],
     ActionType.IDEL:[4,6], #很可爱！
 }
+"""
+宠物在循环做事时，循环的次数
+"""
 
 # COMBO_ACTION_TIMES={
 #     ActionType.DEFAULT:[2,2],

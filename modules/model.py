@@ -2,7 +2,7 @@
 from enum import Enum
 from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
-from PyQt5.QtGui import QPixmap,QImage
+from PyQt5.QtGui import QImage
 import os
 from dataclasses import dataclass
 from pprint import pprint
@@ -13,28 +13,43 @@ import random
 @dataclass()
 class Graph():
     """
-    图片
+    图片（动作帧）
     """
     path:str
+    """图片位置"""
     duration:int
-    pixmap:QImage=None
+    """图片持续时间"""
+    qimage:QImage=None
+    """图片qt实体类"""
 
 
 
 # TODO 此处解析忽略了 drink,eat，因为是分体的逻辑，暂时不考虑
 @dataclass(repr=True)
 class BaseAction():
+    """动作基础类"""
     action_name: str
+    """动作名称（同名动作在一个动作循环里面）"""
     action_type: ActionType
+    """动作类型"""
     animat_type: AnimatType
+    """动画类型"""
     mood: Mood
+    """心情"""
     graph_list: [Graph]
+    """动作对应的图片序列"""
     graph_index=0
-    direction=0 #-1 左，1，右
+    """动作播放到哪个序列了"""
+    direction=0
+    """部分动作具有的动作方向（1 左，1，右）"""
     if_load=False
-    # shift_x=0 #相对位移，如果为负数则反方向，或许不应该在这里设置，因为需要支持随机行走、跟随行走等
-    # shift_y=0
-    def next_graqh(self):
+    """动作是否已初始化"""
+
+    def next_graqh(self)->Graph:
+        """
+        获取下一个动作帧图片，如果为None，说明这个动作播放完了
+        :return: Graph
+        """
         if self.graph_index<len(self.graph_list):
             graph=self.graph_list[self.graph_index]
             self.graph_index=self.graph_index+1
@@ -43,16 +58,25 @@ class BaseAction():
             self.graph_index=0
             return None
 
-#动画序列
+
 @dataclass()
 class SeqAction():
+    """
+    循环动画序列，比如行走循环分为转身（开始动画）-走路（循环）-走路*n-转回去（结束动画）
+    """
     start_action:BaseAction
+    """开始动作"""
     loop_action:BaseAction
+    """循环动作（如果是single类型也会存在这里）"""
     end_action:BaseAction
+    """结束动作"""
     loop_times=10000
+    """动作循环次数，受settings.COMBO_ACTION_TIMES控制，默认无限循环直到某个事件打断动作"""
     cur_animat_type:AnimatType
+    """当前动画类型"""
     next_animat_type:AnimatType
-    loop_change:False #部分循环支持同类型循环互替，比如raise
+    """下一个动画类型"""
+    # loop_change:False #部分循环支持同类型循环互替，比如raise
 
     def __init__(self,start_action:BaseAction,loop_action:BaseAction,end_action:BaseAction):
         assert start_action or loop_action or end_action
@@ -70,11 +94,22 @@ class SeqAction():
         self.next_animat_type = first_action.animat_type
 
     def _next_animat_type(self,animat_type:AnimatType,loop_count:int)->AnimatType:
+        """
+        根据输入的动画类型，判断对应的下一个动画类型是什么
+
+        - 开始动画 -> 结束动画
+        - 循环动画 -> 循环动画/结束动画（根据循环次数是否达到上限决定）
+        - 循环动画 -> 结束动画
+        - 结束动画 -> None
+
+        :param animat_type: 动画类型
+        :param loop_count: 当前循环次数
+        :return: 下一个动画类型
+        """
         if animat_type==AnimatType.SINGLE:
             return None
         if animat_type==None or animat_type==AnimatType.C_END:
             return None
-
 
         if animat_type == AnimatType.A_START and self.loop_action:
             return AnimatType.B_LOOP
@@ -91,6 +126,17 @@ class SeqAction():
 
 
     def next_action(self,animat_type:AnimatType=None)->BaseAction:
+        """
+        获取下一个动作是什么
+
+        - 开始动作 -> 结束动作
+        - 循环动作 -> 循环动作/结束动作（根据循环次数是否达到上限决定）
+        - 循环动作 -> 结束动作
+        - 结束动作 -> None
+
+        :param animat_type: 如果为None，则由SeqAction自己维护的顺序来依次返回动作；如果不为空，则根据输入的动画类型指定该类型的动作（这个指定也会实际更改顺序）
+        :return: 下一个动作；None-当前动作序列全部播放完了
+        """
         if animat_type:
             self.next_animat_type=animat_type
         action=self.get_action(self.next_animat_type)
@@ -107,6 +153,11 @@ class SeqAction():
         return action
 
     def get_action(self,animat_type:AnimatType)->BaseAction:
+        """
+        根据动画类型获取动作
+        :param animat_type: 动画类型
+        :return: 动作
+        """
         if animat_type==None:
             return None
         return_action=None
@@ -124,7 +175,7 @@ class SeqAction():
 
 class ActionManager():
     """
-    动作管理
+    动作管理类
     """
     def __init__(self):
         self._init_actions()
@@ -132,6 +183,10 @@ class ActionManager():
 
 
     def _init_actions(self):
+        """
+        装载所有动作
+        :return:
+        """
         graph_list = []
         for root, dirs, files in os.walk(settings.ACTION_GRAPH_PATH):
             if len(dirs) <= 0 and len(files) > 0: #只看最后一层
@@ -207,16 +262,24 @@ class ActionManager():
 
     def load_one_action(self,action:BaseAction):
         """
-        主要是懒加载
+        加载一个动作下所有图片的QImage类。主要是为了懒加载
+        :param action:动作类
+        :return:返回该动作
         """
+
         for graph in action.graph_list:
-            graph.pixmap=QImage(graph.path)
+            graph.qimage=QImage(graph.path)
         action.if_load=True
         return action
 
     def get_actions(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
         """
-        根据心情和动画类型，获取动作
+        根据指定条件，查找所有符合条件的动作
+        :param action_type: 动作类型
+        :param mood: 心情
+        :param animat_type: 动画类型
+        :param action_name: 动作名称
+        :return: 动作列表
         """
         assert action_type!=None,"必须选定动画类型"
         k=(action_type,mood,animat_type,action_name)
@@ -232,17 +295,29 @@ class ActionManager():
             return v
 
     def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
+        """
+        根据指定条件，从所有符合条件的动作中随机抽一个动作，如果这个动作没加载的话会帮忙加载
+         :param action_type: 动作类型
+        :param mood: 心情
+        :param animat_type: 动画类型
+        :param action_name: 动作名称
+        :return: 动作
+        """
         actions = self.get_actions(action_type, mood,animat_type,action_name)
         if actions == None or actions == []:
             return None
         action = random.choice(actions)
         if not action.if_load:
-
             action = action_manager.load_one_action(action)
-
         return action
 
     def get_seq_actions(self,action_type:ActionType,mood:Mood=None)->SeqAction:
+        """
+        根据指定条件，查找对应的动作序列
+        :param action_type: 动作类型
+        :param mood: 心情
+        :return: 动作序列类
+        """
         animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START]) #查不到没有start，上来就loop的
         if animat_type==AnimatType.SINGLE:
             action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
@@ -309,8 +384,8 @@ class Pet():
 
     def change_mood(self):
         """
-        为什么要不开心的呢？
-        :return: 开心or开心的不明显
+        宠物换心情
+        :return: 为什么要不开心的呢？开心or开心的不明显
         """
         mood=random.choice([Mood.HAPPY, Mood.NOMAL])
         self.mood=mood
@@ -324,7 +399,7 @@ class Pet():
         :param action_type: 动作类型
         :param animat_type: 动画类型
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
-        :return:
+        :return:None
         """
         if interrupt==3:
             self.cur_seq_action=self.get_seq_action(action_type)
@@ -332,7 +407,11 @@ class Pet():
 
 
     def next_action(self,animat_type:AnimatType=None)->BaseAction: #做事涉及到是否能被其他动作打断，暂时不考虑
-
+        """
+        宠物开始进行下一个动作
+        :param animat_type: 动画类型，直接指定宠物当前动作的阶段（比如指定播放宠物爬行动作的循环部分）
+        :return: 动作
+        """
         # if action_type!=None:
         #     self.cur_seq_action=self.get_seq_action(action_type=action_type)
         self.action_count = self.action_count + 1
@@ -348,8 +427,6 @@ class Pet():
 
         self.cur_action=self.cur_seq_action.next_action()
 
-
-
         if self.action_count%20==0:
             self.change_mood()
 
@@ -358,6 +435,11 @@ class Pet():
 
 
     def get_seq_action(self,action_type:ActionType)->SeqAction:
+        """
+        根据条件查找动作序列
+        :param action_type: 动作类型
+        :return: 动作序列
+        """
         assert action_type!=None
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood)
         if seq_action==None:
@@ -369,6 +451,10 @@ class Pet():
 
 
     def _what_to_do(self)->ActionType: #有趣的课题，加权随机
+        """
+        默认情况下，宠物的动作选择，根据`settings.COMMON_ACTION_WEIGHT`配置来进行加权随机
+        :return:
+        """
         total = sum(settings.COMMON_ACTION_WEIGHT.values())
         r = random.uniform(0, total)
         upto = 0
@@ -380,6 +466,10 @@ class Pet():
 
 
     def next_gragh(self):
+        """
+        获取宠物下一个动作帧
+        :return: 动作帧
+        """
         if  self.cur_action:
             graqh=self.cur_action.next_graqh()
             return graqh
