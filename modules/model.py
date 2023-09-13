@@ -2,7 +2,7 @@
 from enum import Enum
 from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
-from PyQt6.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap,QImage
 import os
 from dataclasses import dataclass
 from pprint import pprint
@@ -17,7 +17,7 @@ class Graph():
     """
     path:str
     duration:int
-    pixmap:QPixmap=None
+    pixmap:QImage=None
 
 
 
@@ -210,7 +210,7 @@ class ActionManager():
         主要是懒加载
         """
         for graph in action.graph_list:
-            graph.pixmap=QPixmap(graph.path)
+            graph.pixmap=QImage(graph.path)
         action.if_load=True
         return action
 
@@ -294,19 +294,18 @@ class Pet():
         # self.auto_action=True #是否自动进行动作，会被提起等动作打断，进入外部交互动作，比如提起
 
     #
-        self.action_status=ActionStatus.DEFAULT
-        """
-        被提起、爬坡、行走、music、work、default
-        """
+        # self.action_status=ActionStatus.DEFAULT
+        # """
+        # 被提起、爬坡、行走、music、work、default
+        # """
 
 
 
+    #
+    #
+    # def change_action_status(self,action_status:ActionStatus=ActionStatus.DEFAULT):
+    #     self.action_status=action_status
 
-
-    def change_action_status(self,action_status:ActionStatus=ActionStatus.DEFAULT):
-        self.action_status=action_status
-        # if action_status==ActionStatus.RAISE:
-        #     self.change_action(ActionType.RAISED_DYNAMIC)
 
     def change_mood(self):
         """
@@ -342,11 +341,9 @@ class Pet():
 
         if animat_type!=None:
             self.cur_action = self.cur_seq_action.next_action(animat_type)
-
-
             return self.cur_action
 
-        if self.cur_seq_action.next_animat_type==None: #此处有点问题，没配合上
+        if self.cur_seq_action.next_animat_type==None:
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
 
         self.cur_action=self.cur_seq_action.next_action()

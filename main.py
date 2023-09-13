@@ -1,6 +1,6 @@
 import sys
 
-from PyQt6.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication
 
 
 
@@ -20,5 +20,5 @@ if __name__ == '__main__':
 
     pet.show()
 
-    sys.exit(app.exec())
+    sys.exit(app.exec_())
 

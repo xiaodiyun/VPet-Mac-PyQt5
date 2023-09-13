@@ -11,8 +11,8 @@ ACTION_GRAPH_PATH="mod/0000_core/pet/vup" #图在哪
 
 CLIMB_V=[2,3] #每帧移动距离，不支持多向移动
 
-MOVE_VX=[2,3] #
-MOVE_VY=[0,0]
+MOVE_VX=[2,3]
+MOVE_VY=[-1,1]
 
 FALL_VX=[3,3]
 FALL_VY=[4,4]
@@ -24,7 +24,7 @@ FALL_VY=[4,4]
 #TODO 考虑key改成元祖形式，这样可以更精细控制某些动作频率，以及屏蔽某些动作（设为0）
 COMMON_ACTION_WEIGHT={
     ActionType.DEFAULT:8,
-    ActionType.MOVE:3,
+    ActionType.MOVE:50,
     ActionType.STATEONE:5,
     ActionType.STATETWO:5,
     ActionType.SAY:1,
@@ -35,7 +35,7 @@ COMBO_ACTION_TIMES={
     ActionType.DEFAULT:[6,10],
     ActionType.MOVE:[5,8], #一直爬！爬到边缘被打断并进入climb
     ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
-    ActionType.FALL:[6,10], #一般来说是落地之后自动打断，不存在循环次数
+    ActionType.FALL:[6,10],
     ActionType.STATEONE:[6,10],
     ActionType.STATETWO:[6,10],
     ActionType.SAY:[2,4],
