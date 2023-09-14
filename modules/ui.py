@@ -67,7 +67,13 @@ class DesktopPet(QMainWindow):
         如果移到边缘，状态不为move，则在边缘挡住
         """
         cur_action=None
-        if a0.x()<=0:
+        if a0.y()<=0:
+            a0.setY(0)
+            if cur_action.action_type==ActionType.CLIMB: #进入顶上爬行阶段
+                self.move_thread.vx = 0
+                self.move_thread.vy = random.uniform(*settings.CLIMB_V) * cur_action.direction
+                self.pet.change_action(ActionType.CLIMB, cur_action.direction*2)
+        elif a0.x()<=0:
             cur_action = self.pet.cur_action
             if cur_action.action_type == ActionType.MOVE:
                 self.pet.change_action(ActionType.CLIMB, -1)
@@ -97,10 +103,10 @@ class DesktopPet(QMainWindow):
             self.move_thread.vx = 0
             self.move_thread.vy = -random.uniform(*settings.CLIMB_V)
 
-        if a0.y()<=0:
-            a0.setY(0)
+
+
         # print(a0)
-        super().move(a0) #这里需要等climb.start播完之后才能移位置，要不然看起来有点瞬移
+        super().move(a0)
         return True
 
 
