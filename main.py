@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication
+from modules.share import app
 
 
 
@@ -12,10 +12,10 @@ from  modules.ui import DesktopPet
 
 
 
-if __name__ == '__main__':
-    argv = sys.argv
 
-    app = QApplication(argv)
+if __name__ == '__main__':
+
+
     pet = DesktopPet()
 
     pet.show()

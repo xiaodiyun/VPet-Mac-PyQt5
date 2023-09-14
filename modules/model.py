@@ -41,7 +41,10 @@ class BaseAction():
     graph_index=0
     """动作播放到哪个序列了"""
     direction=0
-    """部分动作具有的动作方向（1 左，1，右）"""
+
+    attr:str=None  #TODO 搜索关键字，准备用这个代替direction等类似字段
+
+    """部分动作具有的动作方向（-1 左，1，右，-2上左，2上右）"""
     if_load=False
     """动作是否已初始化"""
 
@@ -149,6 +152,8 @@ class SeqAction():
             self.loop_count=self.loop_count+1
             if self.loop_count%3==0 and self.loop_action.action_type==ActionType.RAISED:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.RAISED,self.loop_action.mood,AnimatType.B_LOOP)
+            if self.loop_count%4==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
+                self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
         return action
 
@@ -223,6 +228,10 @@ class ActionManager():
                     action.direction=-1
                 if ".RIGHT" in path_pattern:
                     action.direction=1
+                if ".TOP.LEFT" in path_pattern:
+                    action.direction=-2
+                if ".TOP.RIGHT" in path_pattern:
+                    action.direction=2
                 self.action_list.append(action)
                 last_dir=cur_dir
             else:
@@ -272,7 +281,7 @@ class ActionManager():
         action.if_load=True
         return action
 
-    def get_actions(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
+    def get_actions(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,direction:int=None,action_name:str=None):
         """
         根据指定条件，查找所有符合条件的动作
         :param action_type: 动作类型
@@ -286,24 +295,27 @@ class ActionManager():
         v=self.search_cache.get(k)
         if v==None:
 
-            v=list(filter(lambda action: action_type ==action.action_type and mood in(action.mood,None)
-                        and  animat_type in (action.animat_type,None)  and action_name in (action.action_name,None),
+            v=list(filter(lambda action: action_type==action.action_type and mood in(action.mood,None)
+                                         and animat_type in (action.animat_type,None)
+                                         and direction in (action.direction,None)
+                                         and action_name in (action.action_name,None),
                         self.action_list))
             self.search_cache[k]=v
             return v
         else:
             return v
 
-    def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,action_name:str=None):
+    def get_one_action(self,action_type:ActionType,mood:Mood=None,animat_type:AnimatType=None,direction:int=None,action_name:str=None):
         """
         根据指定条件，从所有符合条件的动作中随机抽一个动作，如果这个动作没加载的话会帮忙加载
          :param action_type: 动作类型
         :param mood: 心情
         :param animat_type: 动画类型
+        :param direction: 动作方向
         :param action_name: 动作名称
         :return: 动作
         """
-        actions = self.get_actions(action_type, mood,animat_type,action_name)
+        actions = self.get_actions(action_type, mood,animat_type,direction,action_name)
         if actions == None or actions == []:
             return None
         action = random.choice(actions)
@@ -311,7 +323,7 @@ class ActionManager():
             action = action_manager.load_one_action(action)
         return action
 
-    def get_seq_actions(self,action_type:ActionType,mood:Mood=None)->SeqAction:
+    def get_seq_actions(self,action_type:ActionType,mood:Mood=None,direction:int=None)->SeqAction:
         """
         根据指定条件，查找对应的动作序列
         :param action_type: 动作类型
@@ -320,24 +332,24 @@ class ActionManager():
         """
         animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START]) #查不到没有start，上来就loop的
         if animat_type==AnimatType.SINGLE:
-            action=self.get_one_action(action_type,mood,AnimatType.SINGLE)
+            action=self.get_one_action(action_type,mood,AnimatType.SINGLE,direction)
 
             if action!=None:
                 return SeqAction(None,action,None)
 
-        start_action=self.get_one_action(action_type, mood, AnimatType.A_START)
+        start_action=self.get_one_action(action_type, mood, AnimatType.A_START,direction)
         action_name=None
         if start_action:
             action_name=start_action.action_name
 
-        loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP,action_name)
+        loop_action=self.get_one_action(action_type, mood, AnimatType.B_LOOP,direction,action_name)
         if loop_action: #修改逻辑，具体循环次数由宠物类决定
             action_name = loop_action.action_name
 
-        end_action = self.get_one_action(action_type, mood, AnimatType.C_END,action_name)
+        end_action = self.get_one_action(action_type, mood, AnimatType.C_END,direction,action_name)
 
         if not (start_action or loop_action or end_action):
-            single_action=self.get_one_action(action_type, mood, AnimatType.SINGLE)
+            single_action=self.get_one_action(action_type, mood, AnimatType.SINGLE,direction)
             if single_action:
                 return SeqAction(None,single_action,None)
             else:
@@ -393,16 +405,16 @@ class Pet():
 
 
 
-    def change_action(self,action_type:ActionType=None,animat_type:AnimatType=None,interrupt=3):
+    def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=3):
         """
         宠物更改当前动作
         :param action_type: 动作类型
-        :param animat_type: 动画类型
+        :param direction: 动作方向
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
         :return:None
         """
         if interrupt==3:
-            self.cur_seq_action=self.get_seq_action(action_type)
+            self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()
 
 
@@ -434,14 +446,14 @@ class Pet():
 
 
 
-    def get_seq_action(self,action_type:ActionType)->SeqAction:
+    def get_seq_action(self,action_type:ActionType,direction:int=None)->SeqAction:
         """
         根据条件查找动作序列
         :param action_type: 动作类型
         :return: 动作序列
         """
         assert action_type!=None
-        seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood)
+        seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
         if seq_action==None:
             seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
         return seq_action

@@ -1,17 +1,16 @@
 from .dict import ActionType
-from PyQt5.QtWidgets import QApplication
+from modules.share import app
 
 
 
 
-screen=QApplication.desktop().screenGeometry()
 
 
-SCREEN_HEIGHT=screen.height()
+SCREEN_HEIGHT=app.desktop().screenGeometry().height()
 """
 屏幕高度（因为有些mac会开底部菜单，所以需要手动设置偏移）
 """
-SCREEN_WIDTH=screen.width()
+SCREEN_WIDTH=app.desktop().screenGeometry().width()
 """
 屏幕宽度
 """
@@ -32,6 +31,7 @@ INIT_POS_X=1250
 宠物初始出现x轴坐标，也可以设置为随机： `random.randint(0,SCREEN_WIDTH)`
 """
 INIT_POS_Y=650
+# INIT_POS_Y=-500
 """
 宠物初始出现x轴坐标，也可以设置为随机： `random.randint(0,SCREEN_HEIGHT)`
 """
@@ -71,7 +71,7 @@ COMMON_ACTION_WEIGHT={
 COMBO_ACTION_TIMES={
     ActionType.DEFAULT:[6,10],
     ActionType.MOVE:[5,8], #一直爬！爬到边缘被打断并进入climb
-    ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
+    # ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
     ActionType.FALL:[6,10],
     ActionType.STATEONE:[6,10],
     ActionType.STATETWO:[6,10],

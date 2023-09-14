@@ -22,6 +22,7 @@ class ActionType(Enum):
     """动作类型"""
     RAISED=1
     """提起"""
+
     CLIMB=3  # climb单独分类
     """攀爬"""
     FALL=4

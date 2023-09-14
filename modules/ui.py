@@ -18,11 +18,11 @@ class DesktopPet(QMainWindow):
 
     def __init__(self):
         super(DesktopPet, self).__init__(None)
-
+        self.pet = Pet()
         self.initUI()
 
 
-        self.pet=Pet()
+
 
         # 长按也能触发提起
         self.long_press_timer = QTimer()
@@ -52,16 +52,70 @@ class DesktopPet(QMainWindow):
         current_pos = self.pos()  
         new_pos = current_pos+a0
         self.move_to(new_pos)
-        
-    def move_to(self, a0: QtCore.QPoint) -> None:
 
-        super().move(a0)
-        # 撞墙
+
+    def start_climb(self,a0:QPoint):
+        """
+
+        :param a0:
+        :return:
+        """
+
+
+        """
+        如果移到边缘，且状态为move，则吸到边缘
+        如果移到边缘，状态不为move，则在边缘挡住
+        """
+        cur_action=None
+        if a0.x()<=0:
+            cur_action = self.pet.cur_action
+            if cur_action.action_type == ActionType.MOVE:
+                self.pet.change_action(ActionType.CLIMB, -1)
+                a0.setX(0)
+            elif cur_action.action_type != ActionType.CLIMB or (cur_action.action_type==ActionType.CLIMB and cur_action.animat_type==AnimatType.A_START):
+                a0.setX(-69 / 480 * settings.WINDOW_WIDTH)
+            else:
+                a0.setX(-138 / 480 * settings.WINDOW_WIDTH)
+        elif a0.x()+settings.WINDOW_WIDTH>=settings.SCREEN_WIDTH:
+            cur_action = self.pet.cur_action
+            if cur_action.action_type == ActionType.MOVE:
+                self.pet.change_action(ActionType.CLIMB, 1)
+                a0.setX(settings.SCREEN_WIDTH-settings.WINDOW_WIDTH)
+            elif cur_action.action_type != ActionType.CLIMB or (
+                    cur_action.action_type == ActionType.CLIMB and cur_action.animat_type == AnimatType.A_START):
+                a0.setX(settings.SCREEN_WIDTH -400 / 480 * settings.WINDOW_WIDTH) #有个小过度
+            else:
+                a0.setX(settings.SCREEN_WIDTH -300 / 480 * settings.WINDOW_WIDTH)
+        else:
+            return False
+
+
+        if not self.move_thread or self.move_thread.closed:
+            self.move_thread = MoveThread(self.pet, 0, -random.uniform(*settings.CLIMB_V))
+            self.move_thread.signal.connect(self.move)
+        else:
+            self.move_thread.vx = 0
+            self.move_thread.vy = -random.uniform(*settings.CLIMB_V)
+
+        if a0.y()<=0:
+            a0.setY(0)
+        # print(a0)
+        super().move(a0) #这里需要等climb.start播完之后才能移位置，要不然看起来有点瞬移
+        return True
+
+
+
+    def move_to(self, a0: QtCore.QPoint) -> None:
+        if not self.start_climb(a0):
+            if a0.y()-settings.WINDOW_HEIGHT>=settings.SCREEN_HEIGHT:
+                a0.setY(settings.SCREEN_HEIGHT)
+            elif a0.y()<=0:
+                a0.setY(0)
+
+            super().move(a0)
+
 
     def raise_pet(self):
-
-
-
         rel_cursor_pos=self.mapFromGlobal(QCursor.pos())
         abs_window_pos=self.pos()
         #346*346 203*86
@@ -70,7 +124,6 @@ class DesktopPet(QMainWindow):
         self.move_to(QPoint(x,y))
 
 
-        # self.pet.change_action_status(ActionStatus.RAISE)
 
         self.pet.change_action(ActionType.RAISED)
         self.action_thread.close(force=True)
@@ -85,10 +138,8 @@ class DesktopPet(QMainWindow):
             if not self.drag_flag:
                 self.long_press_timer.start()
 
-            # else:
-            #     self.pet.next_action(AnimatType.B_LOOP)
             self.drag_flag=True
-            # self.pet.change_action_status(ActionStatus.MOVE)
+
             self.offset = event.pos()
             event.accept()
 
@@ -157,7 +208,7 @@ class DesktopPet(QMainWindow):
         self.qimage=qimage
         self.update()
 
-        if self.pet.cur_action.action_type==ActionType.MOVE:
+        if self.pet.cur_action.action_type in (ActionType.MOVE,ActionType.CLIMB):
             if not self.move_thread or self.move_thread.closed:
                 self.move_thread=MoveThread(self.pet,random.uniform(*settings.MOVE_VX),random.uniform(*settings.MOVE_VY))
                 self.move_thread.signal.connect(self.move)
@@ -183,7 +234,7 @@ class MoveThread(QThread):
 
     def run(self):
         while not self.closed:
-            if self.pet.cur_action.action_type==ActionType.MOVE and self.pet.cur_action.animat_type==AnimatType.B_LOOP:
+            if self.pet.cur_action.action_type in (ActionType.MOVE,ActionType.CLIMB) and self.pet.cur_action.animat_type==AnimatType.B_LOOP:
                 self.signal.emit(QPoint(self.vx*self.pet.cur_action.direction,self.vy))
             QThread.msleep(50)
 
