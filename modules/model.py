@@ -4,8 +4,9 @@ from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
 from PyQt5.QtGui import QImage
 import os
-from dataclasses import dataclass
 from pprint import pprint
+from dataclasses import dataclass,field
+
 import random
 
 
@@ -25,7 +26,7 @@ class Graph():
 
 
 # TODO 此处解析忽略了 drink,eat，因为是分体的逻辑，暂时不考虑
-@dataclass(repr=True)
+@dataclass()
 class BaseAction():
     """动作基础类"""
     action_name: str
@@ -45,7 +46,7 @@ class BaseAction():
     attr:str=None  #TODO 搜索关键字，准备用这个代替direction等类似字段
 
     """部分动作具有的动作方向（-1 左，1，右，-2上左，2上右）"""
-    if_load=False
+    if_load:bool=False
     """动作是否已初始化"""
 
     def next_graqh(self)->Graph:
@@ -153,7 +154,7 @@ class SeqAction():
             if self.loop_count%3==0 and self.loop_action.action_type==ActionType.RAISED:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.RAISED,self.loop_action.mood,AnimatType.B_LOOP)
             if self.loop_count%4==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
-                self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP)
+                self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP,self.loop_action.direction)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
         return action
 
@@ -228,16 +229,13 @@ class ActionManager():
                     action.direction=-1
                 if ".RIGHT" in path_pattern:
                     action.direction=1
-                if ".TOP.LEFT" in path_pattern:
-                    action.direction=-2
-                if ".TOP.RIGHT" in path_pattern:
-                    action.direction=2
+
                 self.action_list.append(action)
                 last_dir=cur_dir
             else:
                 graph_name = os.path.basename(graph_path)
                 cur_gragh_list.append(Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0])))
-        # pprint(self.action_list)
+
 
 
 
@@ -251,6 +249,10 @@ class ActionManager():
                 return AnimatType.C_END
             else:
                 return AnimatType.SINGLE
+        elif enum.__name__=='ActionType':
+            for i in enum:
+                if f"{i.value}_" in path_pattern or f"{i.value}." in path_pattern:
+                    return i
         else:
             for i in enum:
                 if f"{i.name}_" in path_pattern or f"{i.name}." in path_pattern:
@@ -372,19 +374,24 @@ class Pet():
     def __init__(self):
         self.cur_action:BaseAction = None
         self.change_mood()
-        # self.cur_seq_action:SeqAction=self.get_seq_action(ActionType.STARTUP)
+
         self.change_action(ActionType.STARTUP)
-        # self.seq_actions_list=[] #需要这个吗？
 
         self.action_count=0 #动作总量计数器
 
-        # self.auto_action=True #是否自动进行动作，会被提起等动作打断，进入外部交互动作，比如提起
 
-    #
-        # self.action_status=ActionStatus.DEFAULT
-        # """
-        # 被提起、爬坡、行走、music、work、default
-        # """
+        # if settings.LAZY_LOAD:
+        #     #只加载提起的动作，因为这个动作加载容易影响交互
+        #     for action in action_manager.get_actions(ActionType.STARTUP):
+        #         action_manager.load_one_action(action)
+        #     for action in action_manager.get_actions(ActionType.DEFAULT):
+        #         action_manager.load_one_action(action)
+        #     for action in action_manager.get_actions(ActionType.RAISED):
+        #         action_manager.load_one_action(action)
+        # else:
+        # for action in action_manager.action_list:
+        #     action_manager.load_one_action(action)
+        # pprint(action_manager.action_list)
 
 
 
@@ -418,7 +425,7 @@ class Pet():
             self.cur_action=self.cur_seq_action.next_action()
 
 
-    def next_action(self,animat_type:AnimatType=None)->BaseAction: #做事涉及到是否能被其他动作打断，暂时不考虑
+    def next_action(self,animat_type:AnimatType=None)->BaseAction:
         """
         宠物开始进行下一个动作
         :param animat_type: 动画类型，直接指定宠物当前动作的阶段（比如指定播放宠物爬行动作的循环部分）
