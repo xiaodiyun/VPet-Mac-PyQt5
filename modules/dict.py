@@ -19,48 +19,57 @@ class Mood(Enum):
 
 
 class ActionType(Enum):
-    """动作类型"""
-    RAISED=1
+    """
+    动作类型，key为不同动作类型，value为在路径中搜索动作的关键字（上覆盖下）
+    """
+    RAISED='RAISED'
     """提起"""
+<<<<<<< HEAD
 
     CLIMB=3
     """攀爬"""
     """在顶上爬"""
     FALL=4
+=======
+    CLIMB_TOP = 'CLIMB.TOP'
+    CLIMB='CLIMB'
+    """攀爬"""
+    FALL='FALL'
+>>>>>>> climb
     """下落"""
-    MOVE=5
+    MOVE='MOVE'
     """移动"""
-    DEFAULT=6
+    DEFAULT='DEFAULT'
     """默认"""
-    TOUCH_HEAD=7
+    TOUCH_HEAD='TOUCH_HEAD'
     """摸头"""
-    TOUCH_BODY=8
+    TOUCH_BODY='TOUCH_BODY'
     """摸身子"""
-    IDEL=9
+    IDEL='IDEL'
     """待机（打瞌睡）"""
-    SLEEP=10
+    SLEEP='SLEEP'
     """睡觉"""
-    SAY=11
+    SAY='SAY'
     """说话"""
-    STATEONE=12
-    """坐下"""
-    STATETWO=13
-    """躺下"""
-    STARTUP=14
+    STATE='STATE'
+    """坐下躺下"""
+    STARTUP='STARTUP'
     """启动动作"""
-    SHUTDOWN=15
+    SHUTDOWN='SHUTDOWN'
     """关闭动作"""
-    WORK=16
+    WORK_CLEAN = "WORKCLEAN"
+    """一个很可爱的舔屏动作，重点提及"""
+    WORK='WORK'
     """打工"""
-    SWITCH_UP=17
-    """状态切换"""
-    SWITCH_DOWN=18
-    SWITCH_THIRSTY=19
-    SWITCH_HUNGER=20
-    MUSIC=21
+    # SWITCH_UP=17
+    # """状态切换"""
+    # SWITCH_DOWN=18
+    # SWITCH_THIRSTY=19
+    # SWITCH_HUNGER=20
+    MUSIC='MUSIC'
     """音乐"""
-    EAT=22
-    DRINK=23
+    EAT='EAT'
+    DRINK='DRINK'
 
 """
 动作类型
@@ -81,6 +90,9 @@ class AnimatType(Enum):
 
 
 class ActionStatus:
+    """
+    宠物状态，好像没用到？
+    """
     DEFAULT=1
     MOVE=2
     WORK=4
