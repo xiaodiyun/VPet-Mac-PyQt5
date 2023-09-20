@@ -2,18 +2,19 @@ import random,sys
 import time
 
 from PyQt5 import QtCore,QtWidgets
-from PyQt5.QtCore import QTimer, QPoint,QThread,pyqtSignal,Qt
+from PyQt5.QtCore import QTimer, QPoint,QThread,pyqtSignal,Qt,QRect
 from PyQt5.QtGui import QPainter,QCursor,QBrush
-from PyQt5.QtWidgets import QApplication, QMainWindow,QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow,QMessageBox,QSizePolicy
 
 from . import settings
 from .model import Pet,BaseAction
 from .dict import ActionType,ActionStatus,AnimatType
 import math
+import threading
 
 
 
-
+lock = threading.Lock()
 class DesktopPet(QMainWindow):
     """桌宠核心类"""
 
@@ -37,19 +38,23 @@ class DesktopPet(QMainWindow):
         self.drag_flag=False  #用于判断是否是点击后移动
 
         self.painter_offset_y=0 #绘图的y轴偏移量
-        self.painter_scale_y = 1  # 绘图的高度放大倍数
-        self.play()
+
+
         self.initUI()
+        self.play()
 
     def initUI(self):
         # self.desktop = QApplication.instance().screens()
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
+
         self.move(QPoint(settings.INIT_POS_X, settings.INIT_POS_Y))
-        # self.setAttribute(Qt.WA_TranslucentBackground)
+
         self.setAttribute(Qt.WA_NoSystemBackground)
+
         self.resize(settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
+
 
 
 
@@ -77,9 +82,15 @@ class DesktopPet(QMainWindow):
         """
         vx=0
         vy=0
+        self.painter_offset_y = 0
         if a0.y()<=settings.SCREEN_Y_START:
             # 如果爬行爬到最上面，切换climb_top模式，并且调整速度方向
             a0.setY(settings.SCREEN_Y_START)
+
+            self.painter_offset_y=-settings.WINDOW_HEIGHT*(120/450)
+
+            # self.painter_offset_y=-100
+            # self.painter_scale_y=
             if self.pet.cur_action.action_type != ActionType.CLIMB_TOP: #不是climb_top的话，切climb_top，被raise提上来的也会走这个逻辑
                 self.pet.change_action(ActionType.CLIMB_TOP,-1 if self.pet.cur_action.direction==0 else -self.pet.cur_action.direction)
             elif a0.x()<=-100/510*settings.WINDOW_WIDTH: #说明爬到边缘了，转个方向
@@ -93,6 +104,7 @@ class DesktopPet(QMainWindow):
             vx = random.uniform(*settings.CLIMB_V)*self.pet.cur_action.direction
 
             vy = 0
+
         elif self.drag_flag:
             self.pet.change_action(ActionType.RAISED)
         if self.pet.cur_action.action_type==ActionType.CLIMB_TOP:
@@ -246,10 +258,19 @@ class DesktopPet(QMainWindow):
             painter = QPainter(self)
 
             painter.translate(0,self.painter_offset_y)
-            painter.scale(1, self.painter_scale_y)
-            painter.drawImage(self.rect(), self.qimage)
+            # painter.fillRect(QRect(0,0,settings.WINDOW_WIDTH,settings.WINDOW_HEIGHT),Qt.transparent)
+            painter.drawImage(QRect(0,0,settings.WINDOW_WIDTH,settings.WINDOW_HEIGHT), self.qimage)
+            # self.qimage=None
 
 
+
+        # self.update()
+        # super().update()
+        # QApplication.processEvents()
+    def resizeEvent(self, event):
+        super().update()
+        self.update()
+        QApplication.processEvents()
 
 
 
@@ -268,9 +289,11 @@ class DesktopPet(QMainWindow):
 
 
     def one_action(self,qimage):
-        self.qimage=qimage
 
-        self.update()
+        self.qimage=qimage
+        # import datetime
+        # print(datetime.datetime.now())
+        super().repaint()
 
 
         if self.pet.cur_action.action_type ==ActionType.MOVE:
@@ -307,6 +330,7 @@ class MoveThread(QThread):
     def run(self):
         while not self.closed:
             if self.pet.cur_action.action_type in (ActionType.MOVE,ActionType.CLIMB,ActionType.MOVE,ActionType.CLIMB_TOP) and self.pet.cur_action.animat_type==AnimatType.B_LOOP:
+
                 self.signal.emit(QPoint(abs(self.vx)*self.pet.direction,self.vy))
             QThread.msleep(50)
 

@@ -3,6 +3,7 @@ from enum import Enum
 from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
 from PyQt5.QtGui import QImage
+
 import os
 from pprint import pprint
 from dataclasses import dataclass,field
@@ -279,7 +280,10 @@ class ActionManager():
         """
 
         for graph in action.graph_list:
-            graph.qimage=QImage(graph.path)
+            qimage=QImage(graph.path)
+
+            graph.qimage=QImage(qimage)
+
         action.if_load=True
         return action
 
@@ -471,7 +475,7 @@ class Pet():
 
         assert action_type!=None
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
-        print(action_type, direction,seq_action.loop_action.action_name) #TODO!
+
         if seq_action==None:
             seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
         return seq_action
