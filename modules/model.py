@@ -485,7 +485,7 @@ class Pet():
 
         assert action_type!=None
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
-        print(action_type, direction,seq_action.loop_action.action_name) #TODO!
+
         if seq_action==None:
             seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
         return seq_action

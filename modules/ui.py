@@ -269,10 +269,7 @@ class DesktopPet(QMainWindow):
         # super().update()
         # QApplication.processEvents()
 
-    def resizeEvent(self, event):
-        super().update()
-        self.update()
-        QApplication.processEvents()
+
 
     def play(self):
         if self.action_thread == None or self.action_thread.closed:
@@ -285,7 +282,7 @@ class DesktopPet(QMainWindow):
         self.qimage = qimage
         # import datetime
         # print(datetime.datetime.now())
-        super().repaint()
+        self.update()
 
         if self.pet.cur_action.action_type == ActionType.MOVE:
             if not self.move_thread or self.move_thread.closed:

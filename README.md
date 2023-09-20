@@ -29,6 +29,9 @@
 ![提起](tutorial/raise.gif)
   <br><br>
 - 加入攀爬等移动动作
+![攀爬](tutorial/climb.gif)
+   <br><br>
+- 加入下落动作
 - 加入工作、睡觉、音乐等电脑交互
 - 再后续看心情。
 
