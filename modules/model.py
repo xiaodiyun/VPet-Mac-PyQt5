@@ -153,7 +153,7 @@ class SeqAction():
             self.loop_count=self.loop_count+1
             if self.loop_count%3==0 and self.loop_action.action_type==ActionType.RAISED:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.RAISED,self.loop_action.mood,AnimatType.B_LOOP)
-            if self.loop_count%4==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
+            if self.loop_count%8==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP,self.loop_action.direction)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
         return action
@@ -293,7 +293,7 @@ class ActionManager():
         :return: 动作列表
         """
         assert action_type!=None,"必须选定动画类型"
-        k=(action_type,mood,animat_type,action_name)
+        k=(action_type,mood,animat_type,action_name,direction)
         v=self.search_cache.get(k)
         if v==None:
 
@@ -374,10 +374,12 @@ class Pet():
     def __init__(self):
         self.cur_action:BaseAction = None
         self.change_mood()
-
+        self.direction=0  #这个direction仅受ui类的动作线程实际控制，以避免动作和方向不一致的情况。因为调用change_action后不一定立刻播放动作
+        self.action_count = 0  # 动作总量计数器
         self.change_action(ActionType.STARTUP)
 
-        self.action_count=0 #动作总量计数器
+
+
 
 
         # if settings.LAZY_LOAD:
@@ -421,8 +423,14 @@ class Pet():
         :return:None
         """
         if interrupt==3:
+            # if direction:
+            #     self.direction=direction
+            # else:
+            #     direction=self.direction
+
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()
+
 
 
     def next_action(self,animat_type:AnimatType=None)->BaseAction:
@@ -439,6 +447,7 @@ class Pet():
 
         if animat_type!=None:
             self.cur_action = self.cur_seq_action.next_action(animat_type)
+            # print(self.cur_seq_action.loop_action.action_name,self.cur_action.action_name)
             return self.cur_action
 
         if self.cur_seq_action.next_animat_type==None:
@@ -459,8 +468,10 @@ class Pet():
         :param action_type: 动作类型
         :return: 动作序列
         """
+
         assert action_type!=None
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
+        print(action_type, direction,seq_action.loop_action.action_name) #TODO!
         if seq_action==None:
             seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
         return seq_action

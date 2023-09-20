@@ -7,8 +7,9 @@ from PyQt5.QtGui import QPainter,QCursor,QBrush
 from PyQt5.QtWidgets import QApplication, QMainWindow,QMessageBox
 
 from . import settings
-from .model import Pet
+from .model import Pet,BaseAction
 from .dict import ActionType,ActionStatus,AnimatType
+import math
 
 
 
@@ -19,7 +20,7 @@ class DesktopPet(QMainWindow):
     def __init__(self):
         super(DesktopPet, self).__init__(None)
         self.pet = Pet()
-        self.initUI()
+
 
 
 
@@ -32,13 +33,13 @@ class DesktopPet(QMainWindow):
 
         self.raise_thread=None  #独立的提起动作信号线程
         self.move_thread=None #独立的移动动作信号线程
-
+        self.action_thread=None
         self.drag_flag=False  #用于判断是否是点击后移动
 
         self.painter_offset_y=0 #绘图的y轴偏移量
         self.painter_scale_y = 1  # 绘图的高度放大倍数
-
         self.play()
+        self.initUI()
 
     def initUI(self):
         # self.desktop = QApplication.instance().screens()
@@ -76,49 +77,81 @@ class DesktopPet(QMainWindow):
         """
         vx=0
         vy=0
-        if a0.y()<=-80/510*settings.WINDOW_HEIGHT:
+        if a0.y()<=settings.SCREEN_Y_START:
             # 如果爬行爬到最上面，切换climb_top模式，并且调整速度方向
-            # print(a0)
-            a0.setY(-144/510*settings.WINDOW_HEIGHT)
-            if self.pet.cur_action.action_type != ActionType.CLIMB_TOP:
-                self.pet.change_action(ActionType.CLIMB_TOP,- self.pet.cur_action.direction)
-            elif a0.x()<=0: #说明爬到边缘了，转个方向
+            a0.setY(settings.SCREEN_Y_START)
+            if self.pet.cur_action.action_type != ActionType.CLIMB_TOP: #不是climb_top的话，切climb_top，被raise提上来的也会走这个逻辑
+                self.pet.change_action(ActionType.CLIMB_TOP,-1 if self.pet.cur_action.direction==0 else -self.pet.cur_action.direction)
+            elif a0.x()<=-100/510*settings.WINDOW_WIDTH: #说明爬到边缘了，转个方向
                 self.pet.change_action(ActionType.CLIMB_TOP,1)
                 self.pet.next_action(AnimatType.B_LOOP)
-                a0.setX(0)
-            elif a0.x()>=settings.SCREEN_WIDTH-settings.WINDOW_WIDTH:
+                a0.setX(-100/510*settings.WINDOW_WIDTH)
+            elif a0.x()>=settings.SCREEN_WIDTH-settings.WINDOW_WIDTH+100/510*settings.WINDOW_WIDTH: #说明爬到边缘了，转个方向
                 self.pet.change_action(ActionType.CLIMB_TOP, -1)
                 self.pet.next_action(AnimatType.B_LOOP)
-                a0.setX(settings.SCREEN_WIDTH-settings.WINDOW_WIDTH)
+                a0.setX(settings.SCREEN_WIDTH-settings.WINDOW_WIDTH+100/510*settings.WINDOW_WIDTH)
             vx = random.uniform(*settings.CLIMB_V)*self.pet.cur_action.direction
-            #此处有问题，因为next_action不会立刻体现在动画中，但是direction会立刻体现在move线程中
-            #需要修正动作一定向动作方向走
+
             vy = 0
+        elif self.drag_flag:
+            self.pet.change_action(ActionType.RAISED)
         if self.pet.cur_action.action_type==ActionType.CLIMB_TOP:
+            # if self.drag_flag:
+            #     self.pet.change_action(ActionType.RAISED)
             pass
         elif a0.x()<=0: #如果撞到左墙
             cur_action = self.pet.cur_action
-            vx=0
-            vy=-random.uniform(*settings.CLIMB_V)
+            # vx=0
+            # vy=-random.uniform(*settings.CLIMB_V)
             if cur_action.action_type == ActionType.MOVE and cur_action.direction==-1:
-                self.pet.change_action(ActionType.CLIMB, -1)
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V)
+                self.pet.change_action(ActionType.CLIMB, direction=-1)
                 a0.setX(0)
-            elif cur_action.action_type != ActionType.CLIMB or (cur_action.action_type==ActionType.CLIMB and cur_action.animat_type==AnimatType.A_START):
-                a0.setX(-70 / 480 * settings.WINDOW_WIDTH)
+            elif self.drag_flag:
+                self.pet.change_action(ActionType.CLIMB,direction=-1)
+                self.pet.next_action(AnimatType.B_LOOP)
+                a0.setX(-140 / 480 * settings.WINDOW_WIDTH)
+            elif cur_action.action_type not in (ActionType.CLIMB,ActionType.MOVE) or (cur_action.action_type==ActionType.CLIMB and cur_action.animat_type==AnimatType.A_START):
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V)
+                a0.setX(-100 / 480 * settings.WINDOW_WIDTH)
+            elif cur_action.action_type == ActionType.MOVE and cur_action.direction==1:
+                vx = random.uniform(*settings.MOVE_VX) * self.pet.cur_action.direction
+                vy = random.uniform(*settings.MOVE_VY)
+                # a0.setX(1)
+
             else:
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V)
                 a0.setX(-140 / 480 * settings.WINDOW_WIDTH)
         elif a0.x()+settings.WINDOW_WIDTH>=settings.SCREEN_WIDTH:#如果撞到右墙
             cur_action = self.pet.cur_action
-            vx = 0
-            vy = -random.uniform(*settings.CLIMB_V) * cur_action.direction
+
             # print(vx,vy,a0,self.pet.cur_action.action_type)
             if cur_action.action_type == ActionType.MOVE and  cur_action.direction==1:
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V)
                 self.pet.change_action(ActionType.CLIMB, 1)
                 a0.setX(settings.SCREEN_WIDTH-settings.WINDOW_WIDTH)
-            elif cur_action.action_type != ActionType.CLIMB or (
+            elif self.drag_flag:
+                self.pet.change_action(ActionType.CLIMB,direction=1)
+                self.pet.next_action(AnimatType.B_LOOP)
+                a0.setX(settings.SCREEN_WIDTH - 300 / 480 * settings.WINDOW_WIDTH)
+
+            elif cur_action.action_type not in (ActionType.CLIMB,ActionType.MOVE) or (
                     cur_action.action_type == ActionType.CLIMB and cur_action.animat_type == AnimatType.A_START):
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V) * cur_action.direction
                 a0.setX(settings.SCREEN_WIDTH -350 / 480 * settings.WINDOW_WIDTH) #有个小过度
+            elif cur_action.action_type == ActionType.MOVE and  cur_action.direction==-1:
+                vx = random.uniform(*settings.MOVE_VX)*self.pet.cur_action.direction
+                vy = random.uniform(*settings.MOVE_VY)
+                # a0.setX(settings.SCREEN_WIDTH-settings.WINDOW_WIDTH-1)
+
             else:
+                vx = 0
+                vy = -random.uniform(*settings.CLIMB_V)
                 a0.setX(settings.SCREEN_WIDTH -300 / 480 * settings.WINDOW_WIDTH)
         else:#说明没撞墙，退出去不走climb逻辑
             return False
@@ -146,18 +179,18 @@ class DesktopPet(QMainWindow):
         y=int(-settings.WINDOW_WIDTH/346*86+rel_cursor_pos.y()+abs_window_pos.y())
         self.move_to(QPoint(x,y))
 
-
-
         self.pet.change_action(ActionType.RAISED)
-        self.action_thread.close(force=True)
-        self.raise_thread = PetThread(self.pet)
 
-        self.raise_thread.signal.connect(self.one_action)
-        self.raise_thread.start()
+        self.action_thread.close(force=True)
+        if not self.raise_thread or self.raise_thread.closed:
+            self.raise_thread = PetThread(self.pet)
+
+            self.raise_thread.signal.connect(self.one_action)
+            self.raise_thread.start()
 
 
     def mousePressEvent(self, event):
-        print("press")
+
         if event.button() == Qt.MouseButton.LeftButton:
             if not self.drag_flag:
                 self.long_press_timer.start()
@@ -170,7 +203,7 @@ class DesktopPet(QMainWindow):
     def mouseReleaseEvent(self, event):
 
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.raise_thread and not self.raise_thread.closed:
+            if self.raise_thread and not self.raise_thread.closed and self.pet.cur_action.action_type==ActionType.RAISED:
                 self.raise_thread.close()
                 # self.pet.change_action_status()
                 self.play()
@@ -180,15 +213,15 @@ class DesktopPet(QMainWindow):
 
 
     def mouseMoveEvent(self, event):
-        print("move")
+
         if self.drag_flag :
             rel_cursor_pos = self.mapFromGlobal(event.globalPos())
             abs_window_pos = self.pos()
             delta_x=int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x())
             delta_y=int(-settings.WINDOW_WIDTH / 346 * 88 + rel_cursor_pos.y())
             delta_point=QPoint(delta_x,delta_y)
-            if (self.raise_thread and self.raise_thread.closed) or not self.raise_thread:
 
+            if (self.raise_thread and self.raise_thread.closed) or not self.raise_thread:
                 self.long_press_timer.stop()
                 self.raise_pet()
                 self.move_to(delta_point + abs_window_pos)
@@ -210,26 +243,23 @@ class DesktopPet(QMainWindow):
         """绘图"""
 
         if hasattr(self, "qimage"):
-            if self.pet.action_count == 0 and self.pet.cur_action.graph_index == 1:
-                time.sleep(0.5)
             painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            painter.fillRect(self.rect(), QBrush(Qt.transparent))
-            # 清空画布
 
             painter.translate(0,self.painter_offset_y)
             painter.scale(1, self.painter_scale_y)
             painter.drawImage(self.rect(), self.qimage)
-            self.update()
-            QApplication.processEvents()
+
 
 
 
 
     def play(self):
-        self.action_thread = PetThread(self.pet)
-        self.action_thread.signal.connect(self.one_action)
-        self.action_thread.start()
+        if self.action_thread==None or self.action_thread.closed:
+            self.action_thread = PetThread(self.pet)
+            self.action_thread.signal.connect(self.one_action)
+            self.action_thread.start()
+
+
 
 
 
@@ -269,16 +299,15 @@ class MoveThread(QThread):
     def __init__(self,pet,vx,vy):
         super().__init__()
         self.pet = pet
-        self.vx=vx
+        self.vx=vx #vx的正负是不需要控制的，一切以pet类的direction为准
         self.vy=vy
-
         self.closed = False
 
 
     def run(self):
         while not self.closed:
             if self.pet.cur_action.action_type in (ActionType.MOVE,ActionType.CLIMB,ActionType.MOVE,ActionType.CLIMB_TOP) and self.pet.cur_action.animat_type==AnimatType.B_LOOP:
-                self.signal.emit(QPoint(self.vx,self.vy))
+                self.signal.emit(QPoint(abs(self.vx)*self.pet.direction,self.vy))
             QThread.msleep(50)
 
     def close(self):
@@ -292,13 +321,17 @@ class PetThread(QThread):
         super().__init__()
         self.pet=pet
         self.closed=False
-        self.next_animat_type=None
+
+        # self.next_animat_type=None
 
     def run(self):
         while not self.closed:
             graph=self.pet.next_gragh()
+
             if not graph:
-                self.pet.next_action(self.next_animat_type)
+                action=self.pet.next_action() #type: BaseAction
+                self.pet.direction=action.direction
+
                 continue
             if self.pet.action_count == 0 and self.pet.cur_action.graph_index==1:
                 time.sleep(0.5)

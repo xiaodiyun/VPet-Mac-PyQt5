@@ -15,7 +15,7 @@ SCREEN_WIDTH=app.desktop().screenGeometry().width()
 屏幕宽度
 """
 
-SCREEN_Y_START=0
+SCREEN_Y_START=25
 """
 预留字段
 - 经过反复测试，（在作者电脑上）如果mac电脑开启了"始终显示菜单栏"，则所有窗口的y轴坐标无法低于0，且低于25的会被重定向到25
@@ -51,7 +51,7 @@ ACTION_GRAPH_PATH="mod/0000_core/pet/vup"
 宠物动作序列图片位置
 """
 
-CLIMB_V=[2,3] #每帧移动距离，不支持多向移动
+CLIMB_V=[2,3] #每帧移动距离
 
 MOVE_VX=[2,3]
 """移动动作下，每50毫秒移动x轴距离"""
@@ -71,7 +71,7 @@ FALL_VY=[4,4]
 
 COMMON_ACTION_WEIGHT={
     ActionType.DEFAULT:8,
-    ActionType.MOVE:50,
+    ActionType.MOVE:1000,
     ActionType.STATE:5,
     ActionType.WORK_CLEAN:3,
     ActionType.SAY:1,
