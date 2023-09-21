@@ -45,13 +45,9 @@ class BaseAction():
 
     attr:str=None  #TODO 搜索关键字，准备用这个代替direction等类似字段
 
-<<<<<<< HEAD
-    """部分动作具有的动作方向（-1 左，1，右，-2 左上，2右上）"""
+
     if_load=False
-=======
-    """部分动作具有的动作方向（-1 左，1，右，-2上左，2上右）"""
-    if_load:bool=False
->>>>>>> climb
+
     """动作是否已初始化"""
 
     def next_graqh(self)->Graph:
@@ -234,16 +230,8 @@ class ActionManager():
                     action.direction=-1
                 if ".RIGHT" in path_pattern:
                     action.direction=1
-<<<<<<< HEAD
-                if ".TOP.LEFT" in path_pattern:
-                    # action.action_type=ActionType.CLIMB_TOP
-                    action.direction=-2
-                if ".TOP.RIGHT" in path_pattern:
-                    # action.action_type = ActionType.CLIMB_TOP
-                    action.direction=2
-=======
 
->>>>>>> climb
+
                 self.action_list.append(action)
                 last_dir=cur_dir
             else:

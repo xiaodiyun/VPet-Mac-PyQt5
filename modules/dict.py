@@ -24,18 +24,12 @@ class ActionType(Enum):
     """
     RAISED='RAISED'
     """提起"""
-<<<<<<< HEAD
 
-    CLIMB=3
-    """攀爬"""
-    """在顶上爬"""
-    FALL=4
-=======
     CLIMB_TOP = 'CLIMB.TOP'
     CLIMB='CLIMB'
     """攀爬"""
     FALL='FALL'
->>>>>>> climb
+
     """下落"""
     MOVE='MOVE'
     """移动"""
