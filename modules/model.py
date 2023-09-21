@@ -420,7 +420,7 @@ class Pet():
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
         :return:None
         """
-        # print(action_type,interrupt)
+        print(action_type,interrupt)
         if interrupt==3:
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()

@@ -59,30 +59,47 @@ class DesktopPet(QMainWindow):
 
     def move_to(self, a0: QtCore.QPoint) -> None:
         if not self.start_climb(a0):
-            # if a0.y()-settings.WINDOW_HEIGHT>=settings.SCREEN_HEIGHT:
-            #     a0.setY(settings.SCREEN_HEIGHT)
-            # elif a0.y()<=0:
-            #     a0.setY(0)
 
             super().move(a0)
+
+    def start_fall(self):
+        cur_action=self.pet.cur_action
+        self.pet.change_action(ActionType.FALL,direction=cur_action.direction)
+        self.action_thread.wakeup()
+        vx = random.uniform(*settings.FALL_VX)*cur_action.direction
+        vy = random.uniform(*settings.FALL_VY)
+        self.move_thread.vx = vx
+        self.move_thread.vy = vy
+        # self.move(QPoint(vx,vy))
+
 
     def start_climb(self, a0: QPoint):
         """
         如果移到边缘，且状态为move，则吸到边缘
         如果移到边缘，状态不为move，则在边缘挡住
         """
-
         vx = 0
         vy = 0
         self.painter_offset_y = 0
+        if self.pet.cur_action.action_type==ActionType.FALL:
+            return False
+
+
         if a0.y() <= settings.SCREEN_Y_START:
             # 如果爬行爬到最上面，切换climb_top模式，并且调整速度方向
             a0.setY(settings.SCREEN_Y_START)
 
+
+
+            if self.pet.cur_action.action_type==ActionType.CLIMB_TOP and (a0.x()<=settings.SCREEN_WIDTH/6 and self.pet.cur_action.direction==1) or (a0.x()>=settings.SCREEN_WIDTH*5/6 and self.pet.cur_action.direction==-1) or (a0.x()>=settings.SCREEN_WIDTH/6 and a0.x()<=settings.SCREEN_WIDTH*5/6):
+                #规定宠物在什么位置什么方向才进入掉落概率判定，防止出现宠物在右边缘向右掉落一头撞墙的问题
+                fall_guess=random.uniform(0,1)
+                if fall_guess<=settings.FALL_GUESS:
+                    self.start_fall()
+                    return False
             self.painter_offset_y = -settings.WINDOW_HEIGHT * (120 / 450)
 
-            # self.painter_offset_y=-100
-            # self.painter_scale_y=
+
             if self.pet.cur_action.action_type != ActionType.CLIMB_TOP:  # 不是climb_top的话，切climb_top，被raise提上来的也会走这个逻辑
                 self.pet.change_action(ActionType.CLIMB_TOP,
                                        -1 if self.pet.cur_action.direction == 0 else -self.pet.cur_action.direction)
@@ -101,13 +118,11 @@ class DesktopPet(QMainWindow):
 
             vy = 0
         elif self.drag_flag and self.pet.cur_action.action_type not in (ActionType.RAISED,ActionType.CLIMB):
-
             self.pet.change_action(ActionType.RAISED)
             self.action_thread.wakeup()
 
 
         if self.pet.cur_action.action_type == ActionType.CLIMB_TOP:
-
             pass
         elif a0.x() <= 0:  # 如果撞到左墙
 
@@ -198,7 +213,7 @@ class DesktopPet(QMainWindow):
         x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x() + abs_window_pos.x())
         y = int(-settings.WINDOW_WIDTH / 346 * 86 + rel_cursor_pos.y() + abs_window_pos.y())
 
-        print("raise")
+
         self.pet.change_action(ActionType.RAISED,interrupt=3)
         self.action_thread.wakeup()
         self.move_to(QPoint(x, y))
@@ -237,7 +252,7 @@ class DesktopPet(QMainWindow):
     def mouseMoveEvent(self, event):
 
         if self.drag_flag:
-            print("move")
+
             rel_cursor_pos = self.mapFromGlobal(event.globalPos())
             abs_window_pos = self.pos()
             delta_x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x())
@@ -301,7 +316,7 @@ class DesktopPet(QMainWindow):
                                               random.uniform(*settings.MOVE_VY))
                 self.move_thread.signal.connect(self.move)
                 self.move_thread.start()
-        elif self.pet.cur_action.action_type not in (ActionType.MOVE, ActionType.CLIMB, ActionType.CLIMB_TOP):
+        elif self.pet.cur_action.action_type not in (ActionType.MOVE,ActionType.FALL, ActionType.CLIMB, ActionType.CLIMB_TOP):
             if self.move_thread:
                 self.move_thread.close()
 
@@ -330,15 +345,18 @@ class MoveThread(QThread):
     def run(self):
         while not self.closed:
             if self.pet.cur_action.action_type in (ActionType.MOVE, ActionType.CLIMB, ActionType.MOVE,
-                                                   ActionType.CLIMB_TOP) and self.pet.cur_action.animat_type == AnimatType.B_LOOP:
+                                                   ActionType.CLIMB_TOP,ActionType.FALL) and self.pet.cur_action.animat_type == AnimatType.B_LOOP:
+
+                # print(QPoint(abs(self.vx) * self.pet.direction, self.vy),'aaa')
                 self.signal.emit(QPoint(abs(self.vx) * self.pet.direction, self.vy))
+                # if self.pet.cur_action.animat_type==AnimatType.C_END:
+                #     self.vx,self.vy=0,0
             QThread.msleep(50)
 
     def close(self):
         self.closed = True
 
-class SleepInterruptedException(Exception):
-    pass
+
 
 class PetThread(QThread):
     signal = pyqtSignal(object)
