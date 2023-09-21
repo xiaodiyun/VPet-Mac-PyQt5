@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
 from . import settings
 from .model import Pet, BaseAction
 from .dict import ActionType, ActionStatus, AnimatType
-import math
+
 import threading
 
-lock = threading.Lock()
+
 
 
 class DesktopPet(QMainWindow):
@@ -25,12 +25,13 @@ class DesktopPet(QMainWindow):
         # 长按定时器，长按或短按+移动会触发宠物提起动作
         self.long_press_timer = QTimer()
         self.long_press_timer.setSingleShot(True)
-        self.long_press_timer.setInterval(300)  # 长按判断时间
+        self.long_press_timer.setInterval(250)  # 长按判断时间
         self.long_press_timer.timeout.connect(self.raise_pet)
 
-        self.raise_thread = None  # 独立的提起动作信号线程
+
         self.move_thread = None  # 独立的移动动作信号线程
-        self.action_thread = None
+        self.action_thread = PetThread(self.pet)
+        self.action_thread.signal.connect(self.one_action)
         self.drag_flag = False  # 用于判断是否是点击后移动
 
         self.painter_offset_y = 0  # 绘图的y轴偏移量
@@ -85,23 +86,28 @@ class DesktopPet(QMainWindow):
             if self.pet.cur_action.action_type != ActionType.CLIMB_TOP:  # 不是climb_top的话，切climb_top，被raise提上来的也会走这个逻辑
                 self.pet.change_action(ActionType.CLIMB_TOP,
                                        -1 if self.pet.cur_action.direction == 0 else -self.pet.cur_action.direction)
+                self.action_thread.wakeup()
             elif a0.x() <= -100 / 510 * settings.WINDOW_WIDTH:  # 说明爬到边缘了，转个方向
                 self.pet.change_action(ActionType.CLIMB_TOP, 1)
                 self.pet.next_action(AnimatType.B_LOOP)
+                # self.action_thread.wakeup()
                 a0.setX(-100 / 510 * settings.WINDOW_WIDTH)
             elif a0.x() >= settings.SCREEN_WIDTH - settings.WINDOW_WIDTH + 100 / 510 * settings.WINDOW_WIDTH:  # 说明爬到边缘了，转个方向
                 self.pet.change_action(ActionType.CLIMB_TOP, -1)
                 self.pet.next_action(AnimatType.B_LOOP)
+                self.action_thread.wakeup()
                 a0.setX(settings.SCREEN_WIDTH - settings.WINDOW_WIDTH + 100 / 510 * settings.WINDOW_WIDTH)
             vx = random.uniform(*settings.CLIMB_V) * self.pet.cur_action.direction
 
             vy = 0
+        elif self.drag_flag and self.pet.cur_action.action_type not in (ActionType.RAISED,ActionType.CLIMB):
 
-        elif self.drag_flag:
             self.pet.change_action(ActionType.RAISED)
+            self.action_thread.wakeup()
+
+
         if self.pet.cur_action.action_type == ActionType.CLIMB_TOP:
-            # if self.drag_flag:
-            #     self.pet.change_action(ActionType.RAISED)
+
             pass
         elif a0.x() <= 0:  # 如果撞到左墙
 
@@ -113,9 +119,10 @@ class DesktopPet(QMainWindow):
                 vy = -random.uniform(*settings.CLIMB_V)
                 self.pet.change_action(ActionType.CLIMB, direction=-1)
                 a0.setX(0)
-            elif self.drag_flag:
+            elif self.drag_flag and self.pet.cur_action.action_type!=ActionType.CLIMB:
                 self.pet.change_action(ActionType.CLIMB, direction=-1)
                 self.pet.next_action(AnimatType.B_LOOP)
+                self.action_thread.wakeup()
                 a0.setX(-140 / 480 * settings.WINDOW_WIDTH)
             elif cur_action.action_type not in (ActionType.CLIMB, ActionType.MOVE) or (
                     cur_action.action_type == ActionType.CLIMB and cur_action.animat_type == AnimatType.A_START):
@@ -139,10 +146,13 @@ class DesktopPet(QMainWindow):
                 vx = 0
                 vy = -random.uniform(*settings.CLIMB_V)
                 self.pet.change_action(ActionType.CLIMB, 1)
+
                 a0.setX(settings.SCREEN_WIDTH - settings.WINDOW_WIDTH)
-            elif self.drag_flag:
+            elif self.drag_flag and self.pet.cur_action.action_type!=ActionType.CLIMB:
+                # print("aaa")
                 self.pet.change_action(ActionType.CLIMB, direction=1)
                 self.pet.next_action(AnimatType.B_LOOP)
+                self.action_thread.wakeup()
                 a0.setX(settings.SCREEN_WIDTH - 300 / 480 * settings.WINDOW_WIDTH)
 
             elif cur_action.action_type not in (ActionType.CLIMB, ActionType.MOVE) or (
@@ -159,6 +169,10 @@ class DesktopPet(QMainWindow):
                 vx = 0
                 vy = -random.uniform(*settings.CLIMB_V)
                 a0.setX(settings.SCREEN_WIDTH - 300 / 480 * settings.WINDOW_WIDTH)
+        elif self.drag_flag and self.pet.cur_action.action_type not in (ActionType.RAISED,):
+
+            self.pet.change_action(ActionType.RAISED)
+            self.action_thread.wakeup()
         else:  # 说明没撞墙，退出去不走climb逻辑
             return False
 
@@ -177,58 +191,70 @@ class DesktopPet(QMainWindow):
         return True
 
     def raise_pet(self):
+
         rel_cursor_pos = self.mapFromGlobal(QCursor.pos())
         abs_window_pos = self.pos()
-        # 346*346 203*86
+
         x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x() + abs_window_pos.x())
         y = int(-settings.WINDOW_WIDTH / 346 * 86 + rel_cursor_pos.y() + abs_window_pos.y())
+
+        print("raise")
+        self.pet.change_action(ActionType.RAISED,interrupt=3)
+        self.action_thread.wakeup()
         self.move_to(QPoint(x, y))
-
-        self.pet.change_action(ActionType.RAISED)
-
-        self.action_thread.close(force=True)
-        if not self.raise_thread or self.raise_thread.closed:
-            self.raise_thread = PetThread(self.pet)
-
-            self.raise_thread.signal.connect(self.one_action)
-            self.raise_thread.start()
+        # self.action_thread.close(force=True)
+        # if not self.raise_thread or self.raise_thread.closed:
+        #     self.raise_thread = PetThread(self.pet)
+        #
+        #     self.raise_thread.signal.connect(self.one_action)
+        #     self.raise_thread.start()
 
     def mousePressEvent(self, event):
 
         if event.button() == Qt.MouseButton.LeftButton:
+
             if not self.drag_flag:
+
                 self.long_press_timer.start()
 
             self.drag_flag = True
 
-            self.offset = event.pos()
-            event.accept()
+            # event.accept()
 
     def mouseReleaseEvent(self, event):
 
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.raise_thread and not self.raise_thread.closed and self.pet.cur_action.action_type == ActionType.RAISED:
-                self.raise_thread.close()
-                # self.pet.change_action_status()
-                self.play()
-            self.long_press_timer.stop()
+
+            if  self.drag_flag and self.pet.cur_action.action_type == ActionType.RAISED and self.pet.cur_action.animat_type!=AnimatType.C_END:
+                # self.raise_thread.close()
+
+                self.pet.change_action(ActionType.DEFAULT,interrupt=2)
+                self.action_thread.wakeup()
             self.drag_flag = False
+            self.long_press_timer.stop()
+
 
     def mouseMoveEvent(self, event):
 
         if self.drag_flag:
+            print("move")
             rel_cursor_pos = self.mapFromGlobal(event.globalPos())
             abs_window_pos = self.pos()
             delta_x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x())
             delta_y = int(-settings.WINDOW_WIDTH / 346 * 88 + rel_cursor_pos.y())
             delta_point = QPoint(delta_x, delta_y)
 
-            if (self.raise_thread and self.raise_thread.closed) or not self.raise_thread:
-                self.long_press_timer.stop()
+
+            # if (self.raise_thread and self.raise_thread.closed) or not self.raise_thread:
+
+                # print(self.pet.cur_action.action_type)
+            self.long_press_timer.stop()
+            if self.pet.cur_action.action_type not in (ActionType.RAISED,ActionType.CLIMB,ActionType.CLIMB_TOP) or (self.pet.cur_action.action_type==ActionType.RAISED and self.pet.cur_action.animat_type==AnimatType.C_END):
+            # else:
                 self.raise_pet()
-                self.move_to(delta_point + abs_window_pos)
-            else:
-                self.move_to(abs_window_pos + delta_point)
+            self.move_to(delta_point + abs_window_pos)
+            # else:
+            #     self.move_to(abs_window_pos + delta_point)
             event.accept()
 
     def mouseDoubleClickEvent(self, QMouseEvent):
@@ -258,9 +284,7 @@ class DesktopPet(QMainWindow):
 
 
     def play(self):
-        if self.action_thread == None or self.action_thread.closed:
-            self.action_thread = PetThread(self.pet)
-            self.action_thread.signal.connect(self.one_action)
+        if self.action_thread.closed:
             self.action_thread.start()
 
     def one_action(self, qimage):
@@ -313,6 +337,8 @@ class MoveThread(QThread):
     def close(self):
         self.closed = True
 
+class SleepInterruptedException(Exception):
+    pass
 
 class PetThread(QThread):
     signal = pyqtSignal(object)
@@ -320,11 +346,13 @@ class PetThread(QThread):
     def __init__(self, pet):
         super().__init__()
         self.pet = pet
-        self.closed = False
+        self.closed = True
+        self.e=None
 
         # self.next_animat_type=None
 
     def run(self):
+        self.closed = False
         while not self.closed:
             graph = self.pet.next_gragh()
 
@@ -346,12 +374,19 @@ class PetThread(QThread):
             qimage = graph.qimage
 
             self.signal.emit(qimage)
-            QThread.msleep(graph.duration)
+
+            self.e = threading.Event()
+            self.e.wait(timeout=graph.duration/1000)
 
     def close(self, force=False):
         if not force:
             self.pet.next_action(AnimatType.C_END)
         self.closed = True
+
+
+    def wakeup(self):
+        self.e.set()
+
 
 
 

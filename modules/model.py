@@ -42,10 +42,6 @@ class BaseAction():
     graph_index=0
     """动作播放到哪个序列了"""
     direction=0
-
-    attr:str=None  #TODO 搜索关键字，准备用这个代替direction等类似字段
-
-
     if_load=False
 
     """动作是否已初始化"""
@@ -424,14 +420,13 @@ class Pet():
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
         :return:None
         """
+        # print(action_type,interrupt)
         if interrupt==3:
-            # if direction:
-            #     self.direction=direction
-            # else:
-            #     direction=self.direction
-
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()
+        elif interrupt==2:
+            self.cur_action=self.next_action(AnimatType.C_END)
+            self.cur_seq_action = self.get_seq_action(action_type=action_type, direction=direction)
 
 
 
