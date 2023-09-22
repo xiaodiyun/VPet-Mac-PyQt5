@@ -374,6 +374,8 @@ class Pet():
         self.change_mood()
         self.direction=0  #这个direction仅受ui类的动作线程实际控制，以避免动作和方向不一致的情况。因为调用change_action后不一定立刻播放动作
         self.action_count = 0  # 动作总量计数器
+        self.vx=0 #速度应当绑定动作
+        self.vy=0
         self.change_action(ActionType.STARTUP)
 
 
@@ -420,7 +422,7 @@ class Pet():
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
         :return:None
         """
-        print(action_type,interrupt)
+
         if interrupt==3:
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()
@@ -448,6 +450,7 @@ class Pet():
             return self.cur_action
 
         if self.cur_seq_action.next_animat_type==None:
+
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
 
         self.cur_action=self.cur_seq_action.next_action()

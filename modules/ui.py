@@ -68,8 +68,8 @@ class DesktopPet(QMainWindow):
         self.action_thread.wakeup()
         vx = random.uniform(*settings.FALL_VX)*cur_action.direction
         vy = random.uniform(*settings.FALL_VY)
-        self.move_thread.vx = vx
-        self.move_thread.vy = vy
+        self.pet.vx = vx
+        self.pet.vy = vy
         # self.move(QPoint(vx,vy))
 
 
@@ -81,7 +81,7 @@ class DesktopPet(QMainWindow):
         vx = 0
         vy = 0
         self.painter_offset_y = 0
-        if self.pet.cur_action.action_type==ActionType.FALL:
+        if a0.x()>0 and a0.x()<settings.SCREEN_WIDTH-settings.WINDOW_WIDTH and self.pet.cur_action.action_type==ActionType.FALL:
             return False
 
 
@@ -129,7 +129,7 @@ class DesktopPet(QMainWindow):
             cur_action = self.pet.cur_action
             # vx=0
             # vy=-random.uniform(*settings.CLIMB_V)
-            if cur_action.action_type == ActionType.MOVE and cur_action.direction == -1:
+            if cur_action.action_type in( ActionType.MOVE,ActionType.FALL) and cur_action.direction == -1:
                 vx = 0
                 vy = -random.uniform(*settings.CLIMB_V)
                 self.pet.change_action(ActionType.CLIMB, direction=-1)
@@ -157,7 +157,7 @@ class DesktopPet(QMainWindow):
             cur_action = self.pet.cur_action
 
             # print(vx,vy,a0,self.pet.cur_action.action_type)
-            if cur_action.action_type == ActionType.MOVE and cur_action.direction == 1:
+            if cur_action.action_type in( ActionType.MOVE,ActionType.FALL) and cur_action.direction == 1:
                 vx = 0
                 vy = -random.uniform(*settings.CLIMB_V)
                 self.pet.change_action(ActionType.CLIMB, 1)
@@ -192,13 +192,12 @@ class DesktopPet(QMainWindow):
             return False
 
         if not self.move_thread or self.move_thread.closed:
-            self.move_thread = MoveThread(self.pet, vx, vy)
+
+            self.move_thread = MoveThread(self.pet)
             self.move_thread.signal.connect(self.move)
             self.move_thread.start()
-        else:
-            # print(vx,vy,a0)
-            self.move_thread.vx = vx
-            self.move_thread.vy = vy
+        self.pet.vx = vx
+        self.pet.vy = vy
 
 
         super().move(a0)  # 这里需要等climb.start播完之后才能移位置，要不然看起来有点瞬移
@@ -311,9 +310,9 @@ class DesktopPet(QMainWindow):
 
         if self.pet.cur_action.action_type == ActionType.MOVE:
             if not self.move_thread or self.move_thread.closed:
-                self.move_thread = MoveThread(self.pet,
-                                              random.uniform(*settings.MOVE_VX) * self.pet.cur_action.direction,
-                                              random.uniform(*settings.MOVE_VY))
+                self.pet.vx=random.uniform(*settings.MOVE_VX)
+                self.pet.vy=random.uniform(*settings.MOVE_VY)
+                self.move_thread = MoveThread(self.pet)
                 self.move_thread.signal.connect(self.move)
                 self.move_thread.start()
         elif self.pet.cur_action.action_type not in (ActionType.MOVE,ActionType.FALL, ActionType.CLIMB, ActionType.CLIMB_TOP):
@@ -335,11 +334,10 @@ class DesktopPet(QMainWindow):
 class MoveThread(QThread):
     signal = pyqtSignal(QPoint)
 
-    def __init__(self, pet, vx, vy):
+    def __init__(self, pet):
         super().__init__()
         self.pet = pet
-        self.vx = vx  # vx的正负是不需要控制的，一切以pet类的direction为准
-        self.vy = vy
+
         self.closed = False
 
     def run(self):
@@ -348,7 +346,7 @@ class MoveThread(QThread):
                                                    ActionType.CLIMB_TOP,ActionType.FALL) and self.pet.cur_action.animat_type == AnimatType.B_LOOP:
 
                 # print(QPoint(abs(self.vx) * self.pet.direction, self.vy),'aaa')
-                self.signal.emit(QPoint(abs(self.vx) * self.pet.direction, self.vy))
+                self.signal.emit(QPoint(abs(self.pet.vx) * self.pet.direction, self.pet.vy))
                 # if self.pet.cur_action.animat_type==AnimatType.C_END:
                 #     self.vx,self.vy=0,0
             QThread.msleep(50)
