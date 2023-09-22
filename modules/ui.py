@@ -29,7 +29,8 @@ class DesktopPet(QMainWindow):
         self.long_press_timer.timeout.connect(self.raise_pet)
 
 
-        self.move_thread = None  # 独立的移动动作信号线程
+        self.move_thread = MoveThread(self.pet)  # 独立的移动动作信号线程
+        self.move_thread.signal.connect(self.move)
         self.action_thread = PetThread(self.pet)
         self.action_thread.signal.connect(self.one_action)
         self.drag_flag = False  # 用于判断是否是点击后移动
@@ -91,7 +92,7 @@ class DesktopPet(QMainWindow):
 
 
 
-            if self.pet.cur_action.action_type==ActionType.CLIMB_TOP and (a0.x()<=settings.SCREEN_WIDTH/6 and self.pet.cur_action.direction==1) or (a0.x()>=settings.SCREEN_WIDTH*5/6 and self.pet.cur_action.direction==-1) or (a0.x()>=settings.SCREEN_WIDTH/6 and a0.x()<=settings.SCREEN_WIDTH*5/6):
+            if self.pet.cur_action.action_type==ActionType.CLIMB_TOP and a0.x()>=settings.SCREEN_WIDTH/6 and a0.x()<=settings.SCREEN_WIDTH*5/6:
                 #规定宠物在什么位置什么方向才进入掉落概率判定，防止出现宠物在右边缘向右掉落一头撞墙的问题
                 fall_guess=random.uniform(0,1)
                 if fall_guess<=settings.FALL_GUESS:
@@ -191,14 +192,14 @@ class DesktopPet(QMainWindow):
         else:  # 说明没撞墙，退出去不走climb逻辑
             return False
 
-        if not self.move_thread or self.move_thread.closed:
-
-            self.move_thread = MoveThread(self.pet)
-            self.move_thread.signal.connect(self.move)
-            self.move_thread.start()
+        # if not self.move_thread or self.move_thread.closed:
+        #
+        #     self.move_thread = MoveThread(self.pet)
+        #     self.move_thread.signal.connect(self.move)
+        #     self.move_thread.start()
         self.pet.vx = vx
         self.pet.vy = vy
-
+        self.pet.move_flag=True
 
         super().move(a0)  # 这里需要等climb.start播完之后才能移位置，要不然看起来有点瞬移
 
@@ -300,6 +301,8 @@ class DesktopPet(QMainWindow):
     def play(self):
         if self.action_thread.closed:
             self.action_thread.start()
+        if self.move_thread.closed:
+            self.move_thread.start()
 
     def one_action(self, qimage):
 
@@ -308,16 +311,17 @@ class DesktopPet(QMainWindow):
         # print(datetime.datetime.now())
         self.update()
 
-        if self.pet.cur_action.action_type == ActionType.MOVE:
-            if not self.move_thread or self.move_thread.closed:
-                self.pet.vx=random.uniform(*settings.MOVE_VX)
-                self.pet.vy=random.uniform(*settings.MOVE_VY)
-                self.move_thread = MoveThread(self.pet)
-                self.move_thread.signal.connect(self.move)
-                self.move_thread.start()
+        if self.pet.cur_action.action_type == ActionType.MOVE and not self.pet.move_flag:
+
+            self.pet.move_flag = True
+            self.pet.vx=random.uniform(*settings.MOVE_VX)
+            self.pet.vy=random.uniform(*settings.MOVE_VY)
+
+
         elif self.pet.cur_action.action_type not in (ActionType.MOVE,ActionType.FALL, ActionType.CLIMB, ActionType.CLIMB_TOP):
-            if self.move_thread:
-                self.move_thread.close()
+            self.pet.vx=0
+            self.pet.vy=0
+            self.pet.move_flag=False
 
     def notify(self, receiver, event):
         """异常处理函数"""
@@ -338,11 +342,13 @@ class MoveThread(QThread):
         super().__init__()
         self.pet = pet
 
-        self.closed = False
+        self.closed = True
+
 
     def run(self):
+        self.closed = False
         while not self.closed:
-            if self.pet.cur_action.action_type in (ActionType.MOVE, ActionType.CLIMB, ActionType.MOVE,
+            if self.pet.move_flag and self.pet.cur_action.action_type in (ActionType.MOVE, ActionType.CLIMB, ActionType.MOVE,
                                                    ActionType.CLIMB_TOP,ActionType.FALL) and self.pet.cur_action.animat_type == AnimatType.B_LOOP:
 
                 # print(QPoint(abs(self.vx) * self.pet.direction, self.vy),'aaa')

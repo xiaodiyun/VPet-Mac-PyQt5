@@ -25,6 +25,7 @@ class Graph():
 
 
 
+
 # TODO 此处解析忽略了 drink,eat，因为是分体的逻辑，暂时不考虑
 @dataclass()
 class BaseAction():
@@ -77,7 +78,8 @@ class SeqAction():
     """当前动画类型"""
     next_animat_type:AnimatType
     """下一个动画类型"""
-    # loop_change:False #部分循环支持同类型循环互替，比如raise
+
+
 
     def __init__(self,start_action:BaseAction,loop_action:BaseAction,end_action:BaseAction):
         assert start_action or loop_action or end_action
@@ -374,8 +376,9 @@ class Pet():
         self.change_mood()
         self.direction=0  #这个direction仅受ui类的动作线程实际控制，以避免动作和方向不一致的情况。因为调用change_action后不一定立刻播放动作
         self.action_count = 0  # 动作总量计数器
-        self.vx=0 #速度应当绑定动作
-        self.vy=0
+        # self.vx=0 #速度应当绑定动作，这样上一个动作结束时，速度不会被自动带入到下一个动作
+        # self.vy=0
+        self.move_flag=False
         self.change_action(ActionType.STARTUP)
 
 
@@ -450,9 +453,9 @@ class Pet():
             return self.cur_action
 
         if self.cur_seq_action.next_animat_type==None:
-
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
-
+            # if self.cur_seq_action.loop_action.action_type not in (ActionType.MOVE,ActionType.FALL, ActionType.CLIMB, ActionType.CLIMB_TOP):
+            self.move_flag=False
         self.cur_action=self.cur_seq_action.next_action()
 
         if self.action_count%20==0:

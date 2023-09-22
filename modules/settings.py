@@ -56,7 +56,7 @@ FALL_VX = [2, 3]
 """
 FALL_VY = [3, 6]
 """
-降落y轴速度，标量
+降落y轴速度，标量。这个值与COMBO_ACTION_TIMES共同决定宠物掉落距离。宠物掉落仅设置左右限制，可以调到屏幕下方不可见位置
 """
 
 FALL_GUESS=0.001
@@ -74,7 +74,7 @@ FALL_GUESS=0.001
 
 COMMON_ACTION_WEIGHT = {
     ActionType.DEFAULT: 8,
-    ActionType.MOVE: 1000,
+    ActionType.MOVE: 1,
     ActionType.STATE: 5,
     ActionType.WORK_CLEAN: 3,
     ActionType.SAY: 1,
@@ -88,7 +88,7 @@ COMBO_ACTION_TIMES = {
     ActionType.DEFAULT: [6, 10],
     ActionType.MOVE: [5, 30],  # 一直爬！爬到边缘被打断并进入climb
     # ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
-    ActionType.FALL: [6, 10],
+    ActionType.FALL: [2, 8],
     ActionType.STATE: [6, 10],
     ActionType.WORK_CLEAN: [4, 8],
     ActionType.SAY: [2, 4],
