@@ -334,12 +334,14 @@ class DesktopPet(QMainWindow):
     def paintEvent(self, event):
         """绘图"""
 
-        if hasattr(self, "qimage"):
+        if hasattr(self, "images"):
             painter = QPainter(self)
 
             painter.translate(0, self.painter_offset_y)
+            for image in self.images:
             # painter.fillRect(QRect(0,0,settings.WINDOW_WIDTH,settings.WINDOW_HEIGHT),Qt.transparent)
-            painter.drawImage(QRect(0, 0, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), self.qimage)
+                painter.drawImage(QRect(0, 0, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), image)
+                painter.drawImage(QRect(0, 0, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), image)
             # self.qimage=None
 
         # self.update()
@@ -354,9 +356,9 @@ class DesktopPet(QMainWindow):
         if self.move_thread.closed:
             self.move_thread.start()
 
-    def one_action(self, qimage):
+    def one_action(self, images):
 
-        self.qimage = qimage
+        self.images = images
         # import datetime
         # print(datetime.datetime.now())
         self.update()
@@ -420,20 +422,18 @@ class PetThread(QThread):
         self.pet = pet
         self.closed = True
         self.e=None
-
+        self.last_duration=0
         # self.next_animat_type=None
 
     def run(self):
         self.closed = False
         while not self.closed:
-            graph = self.pet.next_gragh()
 
-            if not graph:
-                action = self.pet.next_action()  # type: BaseAction
-                self.pet.direction = action.direction
+            graph_lists=self.pet.cur_action.graph_lists
 
-                continue
-            if self.pet.action_count == 0 and self.pet.cur_action.graph_index == 1:
+
+
+            if self.pet.action_count == 0 and self.pet.cur_action.graph_indexes[0] == 0:
                 time.sleep(0.5)
                 """
         感觉像是什么东西没有加载完全？总之添加这个可以一定程度解决部分情况下，图片有边缘覆盖不了的问题，应该只有垃圾mac会遇到这样的问题。
@@ -443,12 +443,36 @@ class PetThread(QThread):
            https://stackoverflow.com/questions/30728820/refreshing-a-qwidget
                 """
 
-            qimage = graph.qimage
+            sum_durations = []
+            for i, graph_list in enumerate(graph_lists):
+                durations=[graph.duration for graph in graph_list]
 
-            self.signal.emit(qimage)
+                graph_index=self.pet.cur_action.graph_indexes[i]
+                if graph_index!=-1:
+                    sum_duration = sum(durations[:graph_index])
+                else:
+                    sum_duration=999999
+                sum_durations.append(sum_duration)
+            min_duration = min(sum_durations)
+            min_indexes = [i for i, val in enumerate(sum_durations) if val == min_duration]
+            images=[]
+            for min_index in min_indexes:
+                graph=self.pet.next_gragh_list(min_index)
+                if graph:
+                    images.append(graph.qimage)
+            if len(images)<=0:
+
+                action = self.pet.next_action()  # type: BaseAction
+                self.pet.direction = action.direction
+                continue
+
+
+
+            self.signal.emit(images)
 
             self.e = threading.Event()
-            self.e.wait(timeout=graph.duration/1000)
+            self.e.wait(timeout=(min_duration-self.last_duration)/1000)
+            self.last_duration=min_duration
 
     def close(self, force=False):
         if not force:
