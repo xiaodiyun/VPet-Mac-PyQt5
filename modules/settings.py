@@ -73,7 +73,7 @@ FALL_GUESS=0.001
 
 
 COMMON_ACTION_WEIGHT = {
-    ActionType.DEFAULT: 8,
+    ActionType.DEFAULT: 100,
     ActionType.MOVE: 1,
     ActionType.STATE: 5,
     ActionType.WORK_CLEAN: 3,
@@ -93,6 +93,8 @@ COMBO_ACTION_TIMES = {
     ActionType.WORK_CLEAN: [4, 8],
     ActionType.SAY: [2, 4],
     ActionType.IDEL: [4, 6],  # 很可爱！
+    ActionType.TOUCH_HEAD:[2,3],
+    ActionType.TOUCH_BODY:[1,2]
 }
 """
 宠物在循环做事时，循环的次数

@@ -3,7 +3,7 @@ import time
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QTimer, QPoint, QThread, pyqtSignal, Qt, QRect
-from PyQt5.QtGui import QPainter, QCursor, QBrush
+from PyQt5.QtGui import QPainter, QCursor, QBrush,QMouseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
 
 from . import settings
@@ -28,6 +28,18 @@ class DesktopPet(QMainWindow):
         self.long_press_timer.setInterval(250)  # 长按判断时间
         self.long_press_timer.timeout.connect(self.raise_pet)
 
+        self.touch_head_timer=QTimer() #摸头定时器
+        self.touch_head_timer.setTimerType(True)
+        self.touch_head_timer.setInterval(1000)
+        self.touch_head_timer.timeout.connect(self.touch_head)
+        self.touch_head_count=0
+
+        self.touch_body_timer = QTimer()  # 摸头定时器
+        self.touch_body_timer.setTimerType(True)
+        self.touch_body_timer.setInterval(1000)
+        self.touch_body_timer.timeout.connect(self.touch_body)
+        self.touch_body_count = 0
+
 
         self.move_thread = MoveThread(self.pet)  # 独立的移动动作信号线程
         self.move_thread.signal.connect(self.move)
@@ -51,6 +63,7 @@ class DesktopPet(QMainWindow):
         self.setAttribute(Qt.WA_NoSystemBackground)
 
         self.resize(settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
+        self.setMouseTracking(True)  # 启用鼠标追踪功能
 
     def move(self, a0: QtCore.QPoint) -> None:
         current_pos = self.pos()
@@ -249,28 +262,47 @@ class DesktopPet(QMainWindow):
             self.long_press_timer.stop()
 
 
-    def mouseMoveEvent(self, event):
 
+    def mouseMoveEvent(self, event:QMouseEvent):
         if self.drag_flag:
+            rel_cursor_pos = event.pos()
 
-            rel_cursor_pos = self.mapFromGlobal(event.globalPos())
             abs_window_pos = self.pos()
             delta_x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x())
             delta_y = int(-settings.WINDOW_WIDTH / 346 * 88 + rel_cursor_pos.y())
             delta_point = QPoint(delta_x, delta_y)
-
-
-            # if (self.raise_thread and self.raise_thread.closed) or not self.raise_thread:
-
-                # print(self.pet.cur_action.action_type)
             self.long_press_timer.stop()
             if self.pet.cur_action.action_type not in (ActionType.RAISED,ActionType.CLIMB,ActionType.CLIMB_TOP) or (self.pet.cur_action.action_type==ActionType.RAISED and self.pet.cur_action.animat_type==AnimatType.C_END):
-            # else:
                 self.raise_pet()
             self.move_to(delta_point + abs_window_pos)
-            # else:
-            #     self.move_to(abs_window_pos + delta_point)
             event.accept()
+        elif self.pet.cur_action.action_type==ActionType.DEFAULT: #判断摸摸
+            if event.pos().y()<=210/460*settings.WINDOW_HEIGHT:
+                if self.touch_head_timer.isActive()==False:
+                    self.touch_head_timer.start()
+                else:
+                    self.touch_head_count=self.touch_head_count+1
+                    print(self.touch_head_count)
+            else:
+                if self.touch_body_timer.isActive()==False:
+                    self.touch_body_timer.start()
+                else:
+                    self.touch_body_count=self.touch_body_count+1
+                    print(self.touch_body_count)
+
+    def touch_head(self):
+        if self.touch_head_count>80:
+            self.pet.change_action(ActionType.TOUCH_HEAD)
+            self.touch_head_count=self.touch_head_count=0
+            self.touch_head_timer.stop()
+    def touch_body(self):
+        if self.touch_body_count>80:
+            self.pet.change_action(ActionType.TOUCH_BODY)
+            self.touch_body_count=self.touch_body_count=0
+            self.touch_body_timer.stop()
+
+
+
 
     def mouseDoubleClickEvent(self, QMouseEvent):
         pass

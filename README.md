@@ -34,7 +34,9 @@
 - 加入下落动作 √<br><br>
 ![下落](tutorial/fall.gif)
    <br><br>
-- 加入摸头交互
+- 上下触摸交互 <br><br>
+![触摸](tutorial/touch.gif)
+<br><br>
 - 加入工作交互
 - 加入睡觉交互
 - 加入短时间多次点击后进入生气状态的交互

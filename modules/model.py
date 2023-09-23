@@ -209,17 +209,20 @@ class ActionManager():
                 mood = self._judge_enum(path_pattern, Mood, Mood.NOMAL)
                 animat_type = self._judge_enum(path_pattern, AnimatType, AnimatType.SINGLE)
                 graph_name=os.path.basename(graph_path)
-
-                if animat_type==AnimatType.A_START:
-                    action_name=path_pattern.split("_A_")[0]
-                elif animat_type==AnimatType.B_LOOP:
-                    action_name = path_pattern.split("_B_")[0]
-                    if action_name==path_pattern:
-                        action_name = path_pattern.split("循环")[0]
-                elif animat_type==AnimatType.C_END:
-                    action_name = path_pattern.split("_C_")[0]
+                if action_type==ActionType.TOUCH_BODY: #这文件结构到底啥情况。。。
+                    action_name=graph_path.split("/")[-2]
+                    pass
                 else:
-                    action_name= path_pattern.split("_SINGLE_")[0]
+                    if animat_type==AnimatType.A_START:
+                        action_name=path_pattern.split("_A_")[0]
+                    elif animat_type==AnimatType.B_LOOP:
+                        action_name = path_pattern.split("_B_")[0]
+                        if action_name==path_pattern:
+                            action_name = path_pattern.split("循环")[0]
+                    elif animat_type==AnimatType.C_END:
+                        action_name = path_pattern.split("_C_")[0]
+                    else:
+                        action_name= path_pattern.split("_SINGLE_")[0]
 
                 # action_name=os.path.dirname(graph_path).replace(os.sep,"_").upper()
                 cur_gragh_list=[Graph(graph_path,int(graph_name.split("_")[-1].split(".")[0]))]
@@ -476,7 +479,9 @@ class Pet():
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
 
         if seq_action==None:
-            seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL) or []
+            seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL)
+            if seq_action == None:
+                seq_action = action_manager.get_seq_actions(action_type=action_type, mood=Mood.HAPPY) or []
         return seq_action
 
 
