@@ -64,6 +64,8 @@ class DesktopPet(QMainWindow):
 
         self.resize(settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
         self.setMouseTracking(True)  # 启用鼠标追踪功能
+        self.setAcceptDrops(True) #启用拖文件检测
+
 
     def move(self, a0: QtCore.QPoint) -> None:
         current_pos = self.pos()
@@ -276,32 +278,36 @@ class DesktopPet(QMainWindow):
                 self.raise_pet()
             self.move_to(delta_point + abs_window_pos)
             event.accept()
-        elif self.pet.cur_action.action_type==ActionType.DEFAULT: #判断摸摸
+        elif self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL): #判断摸摸
             if event.pos().y()<=210/460*settings.WINDOW_HEIGHT:
                 if self.touch_head_timer.isActive()==False:
                     self.touch_head_timer.start()
                 else:
                     self.touch_head_count=self.touch_head_count+1
-                    print(self.touch_head_count)
+                    # print(self.touch_head_count)
             else:
                 if self.touch_body_timer.isActive()==False:
                     self.touch_body_timer.start()
                 else:
                     self.touch_body_count=self.touch_body_count+1
-                    print(self.touch_body_count)
+                    # print(self.touch_body_count)
 
     def touch_head(self):
-        if self.touch_head_count>80:
+        if self.touch_head_count>60:
             self.pet.change_action(ActionType.TOUCH_HEAD)
             self.touch_head_count=self.touch_head_count=0
+            self.touch_body_count = self.touch_body_count = 0
             self.touch_head_timer.stop()
     def touch_body(self):
-        if self.touch_body_count>80:
+        if self.touch_body_count>60:
             self.pet.change_action(ActionType.TOUCH_BODY)
-            self.touch_body_count=self.touch_body_count=0
+            self.touch_head_count = self.touch_head_count = 0
+            self.touch_body_count = self.touch_body_count = 0
             self.touch_body_timer.stop()
 
 
+    def focusOutEvent(self, event):
+        print("失焦")
 
 
     def mouseDoubleClickEvent(self, QMouseEvent):
@@ -309,6 +315,18 @@ class DesktopPet(QMainWindow):
 
     def closeEvent(self, QCloseEvent):
         pass
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        file_path = event.mimeData().urls()[0].toLocalFile()
+        print(f"File dropped: {file_path}")
+
+
 
     def contextMenuEvent(self, e):
         pass

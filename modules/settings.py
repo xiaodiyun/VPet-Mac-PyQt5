@@ -87,7 +87,6 @@ COMMON_ACTION_WEIGHT = {
 COMBO_ACTION_TIMES = {
     ActionType.DEFAULT: [6, 10],
     ActionType.MOVE: [5, 30],  # 一直爬！爬到边缘被打断并进入climb
-    # ActionType.CLIMB:[6,10], #一直爬！爬到边缘被打断并进入climb
     ActionType.FALL: [2, 8],
     ActionType.STATE: [6, 10],
     ActionType.WORK_CLEAN: [4, 8],
@@ -97,18 +96,18 @@ COMBO_ACTION_TIMES = {
     ActionType.TOUCH_BODY:[1,2]
 }
 """
-宠物在循环做事时，循环的次数
+宠物在循环做事时，循环的次数。不在里面的默认无限次
 """
 
-# COMBO_ACTION_TIMES={
-#     ActionType.DEFAULT:[2,2],
-#     ActionType.MOVE:[2,2], #一直爬！爬到边缘被打断并进入climb
-#     ActionType.CLIMB:[2,2], #一直爬！爬到边缘被打断并进入climb
-#     ActionType.FALL:[2,2], #一般来说是落地之后自动打断，不存在循环次数
-#     ActionType.STATEONE:[2,2],
-#     ActionType.STATETWO:[2,2],
-#     ActionType.SAY:[2,2],
-#     ActionType.IDEL:[2,2], #很可爱！
-# }
 
+FILE_ICON_MAP={
+    "icon/docx.icns":["doc","docx"],
+    "icon/folder.icns": ["folder"],
+    "icon/sql.icns": ["sql", "db"],
+    "icon/xlsx.icns": ["xls", "xlsx"],
+    "icon/pdf.icns": ["pdf"],
+}
+"""
+文件后缀跟图标映射，用于在宠物吃文件时展示
+"""
 

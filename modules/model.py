@@ -23,10 +23,15 @@ class Graph():
     qimage:QImage=None
     """图片qt实体类"""
 
+    x: int=None
+    y: int=None
+    width: int = None
+    height: int = None
 
 
 
-# TODO 此处解析忽略了 drink,eat，因为是分体的逻辑，暂时不考虑
+
+
 @dataclass()
 class BaseAction():
     """动作基础类"""
@@ -38,16 +43,16 @@ class BaseAction():
     """动画类型"""
     mood: Mood
     """心情"""
-    graph_list: [Graph]
-    """动作对应的图片序列"""
-    graph_index=0
+    graph_list: [[Graph]]
+    """动作对应的图片序列，一个动作可能同时播放多个图片序列，后面的图片覆盖前面的图片"""
+    graph_indexes:[[int]]
     """动作播放到哪个序列了"""
     direction=0
     if_load=False
 
     """动作是否已初始化"""
 
-    def next_graqh(self)->Graph:
+    def next_graqh(self,i)->Graph:
         """
         获取下一个动作帧图片，如果为None，说明这个动作播放完了
         :return: Graph
@@ -59,6 +64,14 @@ class BaseAction():
         else:
             self.graph_index=0
             return None
+
+@dataclass()
+class HandAction(BaseAction):
+    hand_graph_list:[Graph]
+    food_graph_list:[Graph]
+    hand_graph_index=0
+    food_graph_list=0
+
 
 
 @dataclass()
@@ -211,7 +224,8 @@ class ActionManager():
                 graph_name=os.path.basename(graph_path)
                 if action_type==ActionType.TOUCH_BODY: #这文件结构到底啥情况。。。
                     action_name=graph_path.split("/")[-2]
-                    pass
+                elif action_type==ActionType.EAT:
+                    action_name = graph_path.split("/")[-2]
                 else:
                     if animat_type==AnimatType.A_START:
                         action_name=path_pattern.split("_A_")[0]
@@ -335,9 +349,14 @@ class ActionManager():
         :param mood: 心情
         :return: 动作序列类
         """
+
+
         animat_type=random.choice([AnimatType.SINGLE,AnimatType.A_START]) #查不到没有start，上来就loop的
         if animat_type==AnimatType.SINGLE:
-            action=self.get_one_action(action_type,mood,AnimatType.SINGLE,direction)
+            if action_type==ActionType.EAT:
+                action = self.get_one_action(action_type, mood, AnimatType.SINGLE, direction,'back_lay')
+            else:
+                action=self.get_one_action(action_type,mood,AnimatType.SINGLE,direction)
 
             if action!=None:
                 return SeqAction(None,action,None)
@@ -382,7 +401,7 @@ class Pet():
         # self.vx=0 #速度应当绑定动作，这样上一个动作结束时，速度不会被自动带入到下一个动作
         # self.vy=0
         self.move_flag=False
-        self.change_action(ActionType.STARTUP)
+        self.change_action(ActionType.EAT)
 
 
 
