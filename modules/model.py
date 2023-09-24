@@ -423,7 +423,7 @@ class ActionManager():
             if single_action:
                 if single_action.action_type == ActionType.EAT:
                     if len(single_action.graph_lists)>2:
-                        action.replace_graph_list(1)
+                        single_action.replace_graph_list(1)
                     single_action.append_graph_list(self.gen_eat_graqh_list(params[0]),1)
                 return SeqAction(None,single_action,None)
             else:
@@ -482,7 +482,7 @@ class ActionManager():
             graqh.height = food_animat[4]
             graqh.cut_area=food_animat[5]
             graqh_list.append(graqh)
-            print(graqh)
+            # print(graqh)
 
         return graqh_list
 

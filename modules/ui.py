@@ -9,9 +9,10 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
 from . import settings
 from .model import Pet, BaseAction,Graph
 from .dict import ActionType, ActionStatus, AnimatType
-
+from .tool import *
 import threading
-
+import pyperclip
+import traceback
 
 
 
@@ -311,6 +312,7 @@ class DesktopPet(QMainWindow):
 
 
     def focusOutEvent(self, event):
+        #因为摸头事件仅焦点在宠物上才能触发，体验很差，所以考虑在失焦时走系统级鼠标事件（比较耗资源），聚焦时才走qt的鼠标事件
       # print("失焦")
         pass
 
@@ -330,7 +332,12 @@ class DesktopPet(QMainWindow):
     def dropEvent(self, event):
         file_path = event.mimeData().urls()[0].toLocalFile()
         self.pet.change_action(ActionType.EAT,params=[file_path])
-      # print(f"File dropped: {file_path}")
+        try:
+            save_file(file_path,settings.FILE_SAVE_PATH)
+        except:
+            traceback.print_exception()
+        pyperclip.copy(file_path)
+        print(f"宠物吃了: {file_path}")
 
 
 
@@ -354,7 +361,7 @@ class DesktopPet(QMainWindow):
                 h=graqh.height or settings.WINDOW_HEIGHT
                 cut_area=graqh.cut_area
                 if len(cut_area)==4:
-                    print(graqh.path)
+
                     painter.drawImage(QRect(x, y, w, h), graqh.qimage,QRect(*cut_area))
                 else:
                     # print()

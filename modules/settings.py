@@ -1,5 +1,6 @@
 from .dict import ActionType
-from modules.share import app
+from .share import app
+import os
 
 SCREEN_HEIGHT = app.desktop().screenGeometry().height()
 """
@@ -113,3 +114,13 @@ FILE_ICON_DEFAULT="modules/icon/default.icns"
 文件后缀跟图标映射，用于在宠物吃文件时展示
 """
 
+
+FILE_SAVE_PATH=os.path.join(os.path.expanduser("~"), "Desktop")
+"""
+宠物吃掉文件之后，文件归档地址，如果为None的话则不触发文件归档，只会把文件路径复制到粘贴板
+"""
+
+FILE_RECORD='file_record.txt'
+"""
+记录文件归档历史的文件在哪
+"""
