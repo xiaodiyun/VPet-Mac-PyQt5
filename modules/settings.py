@@ -115,7 +115,7 @@ FILE_ICON_DEFAULT="modules/icon/default.icns"
 """
 
 
-FILE_SAVE_PATH=os.path.join(os.path.expanduser("~"), "Desktop")
+FILE_SAVE_PATH=os.path.join(os.path.expanduser("~"), "Desktop",'存档')
 """
 宠物吃掉文件之后，文件归档地址，如果为None的话则不触发文件归档，只会把文件路径复制到粘贴板
 """

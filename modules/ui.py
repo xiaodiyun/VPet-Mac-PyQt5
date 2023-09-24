@@ -333,7 +333,7 @@ class DesktopPet(QMainWindow):
         file_path = event.mimeData().urls()[0].toLocalFile()
         self.pet.change_action(ActionType.EAT,params=[file_path])
         try:
-            save_file(file_path,settings.FILE_SAVE_PATH)
+            threading.Thread(target=save_file,args=(file_path,settings.FILE_SAVE_PATH)).start()
         except:
             traceback.print_exception()
         pyperclip.copy(file_path)
