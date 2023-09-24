@@ -28,6 +28,9 @@ class Graph():
     width: int = None
     height: int = None
 
+    #图片裁剪区域
+    cut_area=[]
+
 
 
 
@@ -189,6 +192,10 @@ class SeqAction():
             if self.loop_count%8==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP,self.loop_action.direction)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
+        if action.action_type == ActionType.EAT:
+            eat_graqh_list = action_manager.gen_eat_graqh_list("fall.docx")
+            action.append_graph_list(eat_graqh_list, 1)
+            # action.graph_lists=[eat_graqh_list]
         return action
 
     def get_action(self,animat_type:AnimatType)->BaseAction:
@@ -417,6 +424,50 @@ class ActionManager():
 
             return seq_action
 
+    def gen_eat_graqh_list(self,filepath:str):
+        filename=os.path.basename(filepath)
+        if "." in filename:
+            file_extension=filename.split(".")[-1]
+        else:
+            file_extension=""
+        iconpath=settings.FILE_ICON_DEFAULT
+        for key in settings.FILE_ICON_MAP:
+            value=settings.FILE_ICON_MAP[key]
+            if file_extension in value:
+                iconpath=key
+                break
+
+        qimage=QImage(iconpath)
+        #
+        food_animats=[ #此处动画实在兼容不动了，在调整宠物大小之后，一定会不兼容
+            # 动画时长,x,y,w,h,截取区域(吃文件=文件图片高度截取)
+            [550,60.25, 50, 0, 0,[]],
+            [125,60.25, 50, 30, 30,[]],
+            [125,60.25, 50, 30, 30,[]],
+            [125,60.25, 50, 30, 30,[]],
+            [375,60.25, 50, 30, 30,[]],
+            [125,60.25, 48, 30, 30,[]],
+            [125,60.6, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
+            [125,60.5, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
+            [125,60.5, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
+            [125,60.6, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
+            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
+            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
+            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
+            [375,60.5, 48, 0, 0,[]],
+        ]
+        graqh_list=[]
+        for food_animat in food_animats:
+            graqh=Graph(iconpath,food_animat[0],qimage)
+            graqh.x=food_animat[1]
+            graqh.y = food_animat[2]
+            graqh.width = food_animat[3]
+            graqh.height = food_animat[4]
+            graqh.cut_area=food_animat[5]
+            graqh_list.append(graqh)
+            print(graqh)
+
+        return graqh_list
 
 
 
@@ -436,7 +487,7 @@ class Pet():
         # self.vy=0
         self.move_flag=False
 
-        self.change_action(ActionType.STARTUP)
+        self.change_action(ActionType.EAT)
 
 
 
@@ -497,18 +548,8 @@ class Pet():
             self.cur_action=self.next_action(AnimatType.C_END)
             self.cur_seq_action = self.get_seq_action(action_type=action_type, direction=direction)
 
-    def eat(self,filepath:str):
-        filename=os.path.basename(filepath)
-        if "." in filename:
-            file_extension=filename.split(".")[-1]
-        else:
-            file_extension=""
-        iconpath=settings.FILE_ICON_DEFAULT
-        for key in settings.FILE_ICON_MAP:
-            value=settings.FILE_ICON_MAP[key]
-            if file_extension in value:
-                iconpath=key
-                break
+
+
 
 
 
@@ -528,12 +569,12 @@ class Pet():
 
         if animat_type!=None:
             self.cur_action = self.cur_seq_action.next_action(animat_type)
-            # print(self.cur_seq_action.loop_action.action_name,self.cur_action.action_name)
+
             return self.cur_action
 
         if self.cur_seq_action.next_animat_type==None:
             self.cur_seq_action=self.get_seq_action(self._what_to_do())
-            # if self.cur_seq_action.loop_action.action_type not in (ActionType.MOVE,ActionType.FALL, ActionType.CLIMB, ActionType.CLIMB_TOP):
+
             self.move_flag=False
         self.cur_action=self.cur_seq_action.next_action()
 
@@ -564,7 +605,7 @@ class Pet():
 
 
 
-    def _what_to_do(self)->ActionType: #有趣的课题，加权随机
+    def _what_to_do(self)->ActionType:
         """
         默认情况下，宠物的动作选择，根据`settings.COMMON_ACTION_WEIGHT`配置来进行加权随机
         :return:

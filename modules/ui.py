@@ -7,7 +7,7 @@ from PyQt5.QtGui import QPainter, QCursor, QBrush,QMouseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
 
 from . import settings
-from .model import Pet, BaseAction
+from .model import Pet, BaseAction,Graph
 from .dict import ActionType, ActionStatus, AnimatType
 
 import threading
@@ -122,7 +122,7 @@ class DesktopPet(QMainWindow):
                                        -1 if self.pet.cur_action.direction == 0 else -self.pet.cur_action.direction)
                 self.action_thread.wakeup()
             elif a0.x() <= -100 / 510 * settings.WINDOW_WIDTH:  # 说明爬到边缘了，转个方向
-                print('撞墙')
+              # print('撞墙')
                 self.pet.change_action(ActionType.CLIMB_TOP, 1,interrupt=3)
 
                 self.pet.next_action(AnimatType.B_LOOP)
@@ -311,7 +311,8 @@ class DesktopPet(QMainWindow):
 
 
     def focusOutEvent(self, event):
-        print("失焦")
+      # print("失焦")
+        pass
 
 
     def mouseDoubleClickEvent(self, QMouseEvent):
@@ -328,7 +329,7 @@ class DesktopPet(QMainWindow):
 
     def dropEvent(self, event):
         file_path = event.mimeData().urls()[0].toLocalFile()
-        print(f"File dropped: {file_path}")
+      # print(f"File dropped: {file_path}")
 
 
 
@@ -338,15 +339,27 @@ class DesktopPet(QMainWindow):
     def paintEvent(self, event):
         """绘图"""
 
-        if hasattr(self, "images"):
+        if hasattr(self, "graqhs"):
             painter = QPainter(self)
 
             painter.translate(0, self.painter_offset_y)
-            for image in self.images:
-            # painter.fillRect(QRect(0,0,settings.WINDOW_WIDTH,settings.WINDOW_HEIGHT),Qt.transparent)
-                painter.drawImage(QRect(0, 0, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), image)
-                painter.drawImage(QRect(0, 0, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT), image)
-            # self.qimage=None
+            # print(self.graqhs)
+            for graqh in self.graqhs: # type:Graph
+                if graqh.width==0 or graqh.height==0:
+                    return
+                x=graqh.x or 0
+                y=graqh.y or 0
+                w=graqh.width or settings.WINDOW_WIDTH
+                h=graqh.height or settings.WINDOW_HEIGHT
+                cut_area=graqh.cut_area
+                if len(cut_area)==4:
+                    print(graqh.path)
+                    painter.drawImage(QRect(x, y, w, h), graqh.qimage,QRect(*cut_area))
+                else:
+                    # print()
+                    painter.drawImage(QRect(x, y, w, h), graqh.qimage)
+
+
 
         # self.update()
         # super().update()
@@ -360,9 +373,9 @@ class DesktopPet(QMainWindow):
         if self.move_thread.closed:
             self.move_thread.start()
 
-    def one_action(self, images):
+    def one_action(self, graqhs):
 
-        self.images = images
+        self.graqhs = graqhs
         # import datetime
         # print(datetime.datetime.now())
         self.update()
@@ -466,20 +479,20 @@ class PetThread(QThread):
                 sum_durations.append(sum_duration)
             min_duration = min(sum_durations)
             min_indexes = [i for i, val in enumerate(sum_durations) if val == min_duration]
-            images=[]
+            graqhs=[]
             for min_index in min_indexes:
                 graph=self.pet.next_gragh_list(min_index)
                 if graph:
                     # print(graph.path,min_duration-self.last_duration,sum_durations,self.last_duration,)
-                    images.append(graph.qimage)
-            if len(images)<=0:
+                    graqhs.append(graph)
+            if len(graqhs)<=0:
                 self.last_duration=0
                 action = self.pet.next_action()  # type: BaseAction
                 self.pet.direction = action.direction
-                print(f"变方向：{self.pet.direction}")
+              # print(f"变方向：{self.pet.direction}")
                 continue
 
-            self.signal.emit(images)
+            self.signal.emit(graqhs)
             self.e = threading.Event()
 
             self.e.wait(timeout=(min_duration-self.last_duration)/1000)

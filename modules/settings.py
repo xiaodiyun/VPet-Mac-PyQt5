@@ -21,6 +21,7 @@ SCREEN_Y_START = 25
 WINDOW_HEIGHT = 150
 """
 宠物窗口高度
+更改此项配置造成的各种交互偏移，并没有做测试（在作者电脑上跑的好就行）
 """
 WINDOW_WIDTH = 150
 """
@@ -101,13 +102,13 @@ COMBO_ACTION_TIMES = {
 
 
 FILE_ICON_MAP={
-    "icon/docx.icns":["doc","docx"],
-    "icon/folder.icns": ["folder"],
-    "icon/sql.icns": ["sql", "db"],
-    "icon/xlsx.icns": ["xls", "xlsx"],
-    "icon/pdf.icns": ["pdf"],
+    "modules/icon/docx.icns":["doc","docx"],
+    "modules/icon/folder.icns": ["folder"],
+    "modules/icon/sql.icns": ["sql", "db"],
+    "modules/icon/xlsx.icns": ["xls", "xlsx"],
+    "modules/icon/pdf.icns": ["pdf"],
 }
-FILE_ICON_DEFAULT="icon/default.icns"
+FILE_ICON_DEFAULT="modules/icon/default.icns"
 """
 文件后缀跟图标映射，用于在宠物吃文件时展示
 """
