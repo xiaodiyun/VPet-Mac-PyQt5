@@ -329,6 +329,7 @@ class DesktopPet(QMainWindow):
 
     def dropEvent(self, event):
         file_path = event.mimeData().urls()[0].toLocalFile()
+        self.pet.change_action(ActionType.EAT,params=[file_path])
       # print(f"File dropped: {file_path}")
 
 
@@ -453,6 +454,7 @@ class PetThread(QThread):
             if self.pet.action_count != self.last_action_count:
                 self.last_duration = 0
                 self.last_action_count = self.pet.action_count
+                self.pet.direction=cur_action.direction
 
 
 

@@ -66,6 +66,9 @@ class BaseAction():
         self.direction = 0
         self.if_load = False
 
+    def replace_graph_list(self,i=None):
+        del self.graph_indexes[i]
+        del self.graph_lists[i]
     def append_graph_list(self,graph_list,i=None):
         self.graph_indexes.append(0)
         if not i:
@@ -192,9 +195,7 @@ class SeqAction():
             if self.loop_count%8==0 and self.loop_action.action_type==ActionType.MOVE:#部分动作支持循环之间相互替换
                 self.loop_action=action_manager.get_one_action(ActionType.MOVE,self.loop_action.mood,AnimatType.B_LOOP,self.loop_action.direction)
         self.next_animat_type=self._next_animat_type(self.cur_animat_type,self.loop_count)
-        if action.action_type == ActionType.EAT:
-            eat_graqh_list = action_manager.gen_eat_graqh_list("fall.docx")
-            action.append_graph_list(eat_graqh_list, 1)
+
             # action.graph_lists=[eat_graqh_list]
         return action
 
@@ -385,7 +386,7 @@ class ActionManager():
             action = action_manager.load_one_action(action)
         return action
 
-    def get_seq_actions(self,action_type:ActionType,mood:Mood=None,direction:int=None)->SeqAction:
+    def get_seq_actions(self,action_type:ActionType,mood:Mood=None,direction:int=None,params=[])->SeqAction:
         """
         根据指定条件，查找对应的动作序列
         :param action_type: 动作类型
@@ -400,6 +401,10 @@ class ActionManager():
             action=self.get_one_action(action_type,mood,AnimatType.SINGLE,direction)
 
             if action!=None:
+                if action.action_type == ActionType.EAT:
+                    if len(action.graph_lists)>2:
+                        action.replace_graph_list(1)
+                    action.append_graph_list(self.gen_eat_graqh_list(params[0]),1)
                 return SeqAction(None,action,None)
 
         start_action=self.get_one_action(action_type, mood, AnimatType.A_START,direction)
@@ -416,6 +421,10 @@ class ActionManager():
         if not (start_action or loop_action or end_action):
             single_action=self.get_one_action(action_type, mood, AnimatType.SINGLE,direction)
             if single_action:
+                if single_action.action_type == ActionType.EAT:
+                    if len(single_action.graph_lists)>2:
+                        action.replace_graph_list(1)
+                    single_action.append_graph_list(self.gen_eat_graqh_list(params[0]),1)
                 return SeqAction(None,single_action,None)
             else:
                 return None
@@ -425,19 +434,27 @@ class ActionManager():
             return seq_action
 
     def gen_eat_graqh_list(self,filepath:str):
+        if os.path.isdir(filepath):
+            filepath="sth.folder"
+
         filename=os.path.basename(filepath)
         if "." in filename:
-            file_extension=filename.split(".")[-1]
+            file_extension=filename.split(".")[-1].lower()
         else:
-            file_extension=""
-        iconpath=settings.FILE_ICON_DEFAULT
-        for key in settings.FILE_ICON_MAP:
-            value=settings.FILE_ICON_MAP[key]
-            if file_extension in value:
-                iconpath=key
-                break
+            file_extension="default"
+        if file_extension in ('bmp','jpg','jpeg','png','gif','ico','icns'):
+            iconpath=filepath
+        else:
+            iconpath=settings.FILE_ICON_DEFAULT
+            for key in settings.FILE_ICON_MAP:
+                value=settings.FILE_ICON_MAP[key]
+                if file_extension in value:
+                    iconpath=key
+                    break
 
         qimage=QImage(iconpath)
+        if qimage.isNull():
+            qimage=QImage(settings.FILE_ICON_DEFAULT)
         #
         food_animats=[ #此处动画实在兼容不动了，在调整宠物大小之后，一定会不兼容
             # 动画时长,x,y,w,h,截取区域(吃文件=文件图片高度截取)
@@ -487,7 +504,7 @@ class Pet():
         # self.vy=0
         self.move_flag=False
 
-        self.change_action(ActionType.EAT)
+        self.change_action(ActionType.STARTUP)
 
 
 
@@ -525,7 +542,7 @@ class Pet():
 
 
 
-    def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=4):
+    def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=4,params=[]):
         """
         宠物更改当前动作
         :param action_type: 动作类型
@@ -538,15 +555,16 @@ class Pet():
         if interrupt==4 or (interrupt==3 and not( self.cur_action.action_type==action_type and self.cur_action.direction==direction)):
 
 
-            self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
+            self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction,params=params)
             self.cur_action=self.cur_seq_action.next_action()
-            self.direction = self.cur_action.direction
+
 
 
         elif interrupt==2:
 
             self.cur_action=self.next_action(AnimatType.C_END)
-            self.cur_seq_action = self.get_seq_action(action_type=action_type, direction=direction)
+            self.cur_seq_action = self.get_seq_action(action_type=action_type, direction=direction,params=params)
+        self.direction = self.cur_action.direction
 
 
 
@@ -585,7 +603,7 @@ class Pet():
 
 
 
-    def get_seq_action(self,action_type:ActionType,direction:int=None)->SeqAction:
+    def get_seq_action(self,action_type:ActionType,direction:int=None,params=[])->SeqAction:
         """
         根据条件查找动作序列
         :param action_type: 动作类型
@@ -593,12 +611,12 @@ class Pet():
         """
 
         assert action_type!=None
-        seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction)
+        seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction,params=params)
 
         if seq_action==None:
-            seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL)
+            seq_action=action_manager.get_seq_actions(action_type=action_type, mood=Mood.NOMAL,params=params)
             if seq_action == None:
-                seq_action = action_manager.get_seq_actions(action_type=action_type, mood=Mood.HAPPY) or []
+                seq_action = action_manager.get_seq_actions(action_type=action_type, mood=Mood.HAPPY,params=params) or []
         return seq_action
 
 
