@@ -107,6 +107,7 @@ FILE_ICON_MAP={
     "icon/xlsx.icns": ["xls", "xlsx"],
     "icon/pdf.icns": ["pdf"],
 }
+FILE_ICON_DEFAULT="icon/default.icns"
 """
 文件后缀跟图标映射，用于在宠物吃文件时展示
 """

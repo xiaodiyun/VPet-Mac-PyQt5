@@ -68,6 +68,7 @@ class DesktopPet(QMainWindow):
 
 
     def move(self, a0: QtCore.QPoint) -> None:
+        # print(a0)
         current_pos = self.pos()
 
         new_pos = current_pos + a0
@@ -121,15 +122,17 @@ class DesktopPet(QMainWindow):
                                        -1 if self.pet.cur_action.direction == 0 else -self.pet.cur_action.direction)
                 self.action_thread.wakeup()
             elif a0.x() <= -100 / 510 * settings.WINDOW_WIDTH:  # 说明爬到边缘了，转个方向
-                self.pet.change_action(ActionType.CLIMB_TOP, 1)
+                print('撞墙')
+                self.pet.change_action(ActionType.CLIMB_TOP, 1,interrupt=3)
+
                 self.pet.next_action(AnimatType.B_LOOP)
                 # self.action_thread.wakeup()
-                a0.setX(-100 / 510 * settings.WINDOW_WIDTH)
+                # a0.setX(-100 / 510 * settings.WINDOW_WIDTH)
             elif a0.x() >= settings.SCREEN_WIDTH - settings.WINDOW_WIDTH + 100 / 510 * settings.WINDOW_WIDTH:  # 说明爬到边缘了，转个方向
-                self.pet.change_action(ActionType.CLIMB_TOP, -1)
+                self.pet.change_action(ActionType.CLIMB_TOP, -1,interrupt=3)
                 self.pet.next_action(AnimatType.B_LOOP)
                 self.action_thread.wakeup()
-                a0.setX(settings.SCREEN_WIDTH - settings.WINDOW_WIDTH + 100 / 510 * settings.WINDOW_WIDTH)
+                # a0.setX(settings.SCREEN_WIDTH - settings.WINDOW_WIDTH + 100 / 510 * settings.WINDOW_WIDTH)
             vx = random.uniform(*settings.CLIMB_V) * self.pet.cur_action.direction
 
             vy = 0
@@ -240,7 +243,8 @@ class DesktopPet(QMainWindow):
         #     self.raise_thread.start()
 
     def mousePressEvent(self, event):
-
+        self.touch_head_count = 0
+        self.touch_body_count = 0
         if event.button() == Qt.MouseButton.LeftButton:
 
             if not self.drag_flag:
@@ -295,14 +299,14 @@ class DesktopPet(QMainWindow):
     def touch_head(self):
         if self.touch_head_count>60:
             self.pet.change_action(ActionType.TOUCH_HEAD)
-            self.touch_head_count=self.touch_head_count=0
-            self.touch_body_count = self.touch_body_count = 0
+            self.touch_head_count=0
+            self.touch_body_count = 0
             self.touch_head_timer.stop()
     def touch_body(self):
         if self.touch_body_count>60:
             self.pet.change_action(ActionType.TOUCH_BODY)
-            self.touch_head_count = self.touch_head_count = 0
-            self.touch_body_count = self.touch_body_count = 0
+            self.touch_head_count = 0
+            self.touch_body_count = 0
             self.touch_body_timer.stop()
 
 
@@ -403,7 +407,7 @@ class MoveThread(QThread):
             if self.pet.move_flag and self.pet.cur_action.action_type in (ActionType.MOVE, ActionType.CLIMB, ActionType.MOVE,
                                                    ActionType.CLIMB_TOP,ActionType.FALL) and self.pet.cur_action.animat_type == AnimatType.B_LOOP:
 
-                # print(QPoint(abs(self.vx) * self.pet.direction, self.vy),'aaa')
+                # print(QPoint(abs(self.pet.vx) * self.pet.direction, self.pet.vy),'aaa')
                 self.signal.emit(QPoint(abs(self.pet.vx) * self.pet.direction, self.pet.vy))
                 # if self.pet.cur_action.animat_type==AnimatType.C_END:
                 #     self.vx,self.vy=0,0
@@ -423,13 +427,19 @@ class PetThread(QThread):
         self.closed = True
         self.e=None
         self.last_duration=0
+        self.last_action_count=0
+
         # self.next_animat_type=None
 
     def run(self):
         self.closed = False
         while not self.closed:
-
-            graph_lists=self.pet.cur_action.graph_lists
+            cur_action=self.pet.cur_action
+            # print(cur_action.direction,cur_action.action_type,cur_action.graph_indexes)
+            graph_lists=cur_action.graph_lists
+            if self.pet.action_count != self.last_action_count:
+                self.last_duration = 0
+                self.last_action_count = self.pet.action_count
 
 
 
@@ -447,9 +457,10 @@ class PetThread(QThread):
             for i, graph_list in enumerate(graph_lists):
                 durations=[graph.duration for graph in graph_list]
 
-                graph_index=self.pet.cur_action.graph_indexes[i]
+                graph_index=cur_action.graph_indexes[i]
                 if graph_index!=-1:
-                    sum_duration = sum(durations[:graph_index])
+                    # print(durations[:graph_index+1])
+                    sum_duration = sum(durations[:graph_index+1])
                 else:
                     sum_duration=999999
                 sum_durations.append(sum_duration)
@@ -459,19 +470,20 @@ class PetThread(QThread):
             for min_index in min_indexes:
                 graph=self.pet.next_gragh_list(min_index)
                 if graph:
+                    # print(graph.path,min_duration-self.last_duration,sum_durations,self.last_duration,)
                     images.append(graph.qimage)
             if len(images)<=0:
-
+                self.last_duration=0
                 action = self.pet.next_action()  # type: BaseAction
                 self.pet.direction = action.direction
+                print(f"变方向：{self.pet.direction}")
                 continue
 
-
-
             self.signal.emit(images)
-
             self.e = threading.Event()
+
             self.e.wait(timeout=(min_duration-self.last_duration)/1000)
+
             self.last_duration=min_duration
 
     def close(self, force=False):

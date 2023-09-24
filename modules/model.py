@@ -435,7 +435,8 @@ class Pet():
         # self.vx=0 #速度应当绑定动作，这样上一个动作结束时，速度不会被自动带入到下一个动作
         # self.vy=0
         self.move_flag=False
-        self.change_action(ActionType.EAT)
+
+        self.change_action(ActionType.STARTUP)
 
 
 
@@ -473,21 +474,43 @@ class Pet():
 
 
 
-    def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=3):
+    def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=4):
         """
         宠物更改当前动作
         :param action_type: 动作类型
         :param direction: 动作方向
-        :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作；
+        :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作，如果当前正在做这个动作的话，则不处理 4-强制打断当前动作，进入新动作；
         :return:None
         """
+        if self.cur_action and not(interrupt==3 and  self.cur_action.action_type==action_type and self.cur_action.direction==direction):
+            self.cur_action.reset()
+        if interrupt==4 or (interrupt==3 and not( self.cur_action.action_type==action_type and self.cur_action.direction==direction)):
 
-        if interrupt==3:
+
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction)
             self.cur_action=self.cur_seq_action.next_action()
+            self.direction = self.cur_action.direction
+
+
         elif interrupt==2:
+
             self.cur_action=self.next_action(AnimatType.C_END)
             self.cur_seq_action = self.get_seq_action(action_type=action_type, direction=direction)
+
+    def eat(self,filepath:str):
+        filename=os.path.basename(filepath)
+        if "." in filename:
+            file_extension=filename.split(".")[-1]
+        else:
+            file_extension=""
+        iconpath=settings.FILE_ICON_DEFAULT
+        for key in settings.FILE_ICON_MAP:
+            value=settings.FILE_ICON_MAP[key]
+            if file_extension in value:
+                iconpath=key
+                break
+
+
 
 
 
