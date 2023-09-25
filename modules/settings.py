@@ -58,7 +58,7 @@ FALL_VX = [2, 3]
 """
 FALL_VY = [3, 6]
 """
-降落y轴速度，标量。这个值与COMBO_ACTION_TIMES共同决定宠物掉落距离。宠物掉落仅设置左右限制，可以调到屏幕下方不可见位置
+降落y轴速度，标量。这个值与COMBO_ACTION_TIMES共同决定宠物掉落距离。宠物掉落仅设置左右限制，可以掉到屏幕下方不可见位置
 """
 
 FALL_GUESS=0.001
@@ -93,7 +93,7 @@ COMBO_ACTION_TIMES = {
     ActionType.STATE: [6, 10],
     ActionType.WORK_CLEAN: [4, 8],
     ActionType.SAY: [2, 4],
-    ActionType.IDEL: [4, 6],  # 很可爱！
+    ActionType.IDEL: [20, 40],  # 很可爱！
     ActionType.TOUCH_HEAD:[2,3],
     ActionType.TOUCH_BODY:[1,2]
 }

@@ -453,6 +453,7 @@ class ActionManager():
                     break
 
         qimage=QImage(iconpath)
+        qimage=qimage.scaled(30,30)
         if qimage.isNull():
             qimage=QImage(settings.FILE_ICON_DEFAULT)
         #

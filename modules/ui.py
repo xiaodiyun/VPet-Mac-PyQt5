@@ -325,18 +325,27 @@ class DesktopPet(QMainWindow):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
+            self.pet.change_action(ActionType.WORK_CLEAN, interrupt=4)
+            self.pet.cur_seq_action.loop_times=999999
+            file_path = event.mimeData().urls()[0].toLocalFile()
+            pyperclip.copy(file_path)
             event.accept()
         else:
             event.ignore()
+    def dragLeaveEvent(self, event) -> None:
+
+        if self.pet.cur_action.action_type == ActionType.WORK_CLEAN:
+            self.pet.next_action(AnimatType.C_END)
 
     def dropEvent(self, event):
+
         file_path = event.mimeData().urls()[0].toLocalFile()
         self.pet.change_action(ActionType.EAT,params=[file_path])
         try:
             threading.Thread(target=save_file,args=(file_path,settings.FILE_SAVE_PATH)).start()
         except:
             traceback.print_exception()
-        pyperclip.copy(file_path)
+
         print(f"宠物吃了: {file_path}")
 
 
