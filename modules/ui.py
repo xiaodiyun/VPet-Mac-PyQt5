@@ -13,6 +13,7 @@ from .tool import *
 import threading
 import pyperclip
 import traceback
+import pyautogui
 
 
 
@@ -46,6 +47,9 @@ class DesktopPet(QMainWindow):
         self.move_thread.signal.connect(self.move)
         self.action_thread = PetThread(self.pet)
         self.action_thread.signal.connect(self.one_action)
+        self.watcher = GlobalEventWatcher(self.pet)
+        self.watcher.start()
+
         self.drag_flag = False  # 用于判断是否是点击后移动
 
         self.painter_offset_y = 0  # 绘图的y轴偏移量
@@ -77,8 +81,9 @@ class DesktopPet(QMainWindow):
 
     def move_to(self, a0: QtCore.QPoint) -> None:
         if not self.start_climb(a0):
-
             super().move(a0)
+            self.pet.x = a0.x()
+            self.pet.y = a0.y()
 
     def start_fall(self):
         cur_action=self.pet.cur_action
@@ -221,7 +226,8 @@ class DesktopPet(QMainWindow):
         self.pet.move_flag=True
 
         super().move(a0)  # 这里需要等climb.start播完之后才能移位置，要不然看起来有点瞬移
-
+        self.pet.x = a0.x()
+        self.pet.y = a0.y()
         return True
 
     def raise_pet(self):
@@ -236,6 +242,7 @@ class DesktopPet(QMainWindow):
         self.pet.change_action(ActionType.RAISED,interrupt=3)
         self.action_thread.wakeup()
         self.move_to(QPoint(x, y))
+
         # self.action_thread.close(force=True)
         # if not self.raise_thread or self.raise_thread.closed:
         #     self.raise_thread = PetThread(self.pet)
@@ -529,6 +536,46 @@ class PetThread(QThread):
 
 
 
+class GlobalEventWatcher(QThread):
+    """
+    电脑全局的事件监控，用于越过qt必须要获取焦点才能监听事件的限制
+    """
+
+    def __init__(self, pet:Pet):
+        super().__init__()
+        self.pet=pet
+        self.interval=2
+        self.closed=True
+        self.last_x=0
+        self.last_y=0
+
+
+    def run(self):
+        self.closed = False
+        while not self.closed:
+            p=pyautogui.position()
+            if p.x>=self.pet.x and p.x<=self.pet.x+settings.WINDOW_WIDTH and p.y>=self.pet.y and p.y<=self.pet.y+settings.WINDOW_HEIGHT:
+                if p.x!=self.last_x or p.y!=self.last_y:
+                    self.onmousemove(p.x,p.y)
+                self.last_x = p.x
+                self.last_y = p.y
+            time.sleep(self.interval)
+
+
+
+    def onmousemove(self,x,y):
+        print('onmousemove')
+        # if event.pos().y() <= 210 / 460 * settings.WINDOW_HEIGHT:
+        #     if self.touch_head_timer.isActive() == False:
+        #         self.touch_head_timer.start()
+        #     else:
+        #         self.touch_head_count = self.touch_head_count + 1
+        #         # print(self.touch_head_count)
+        # else:
+        #     if self.touch_body_timer.isActive() == False:
+        #         self.touch_body_timer.start()
+        #     else:
+        #         self.touch_body_count = self.touch_body_count + 1
 
 
 

@@ -340,7 +340,9 @@ class ActionManager():
         """
         for graph_list in action.graph_lists:
             for graph in graph_list:
+
                 graph.qimage=QImage(graph.path)
+
         action.if_load=True
         return action
 
@@ -503,6 +505,9 @@ class Pet():
         self.action_count = 0  # 动作总量计数器
         # self.vx=0 #速度应当绑定动作，这样上一个动作结束时，速度不会被自动带入到下一个动作
         # self.vy=0
+
+        self.x=0
+        self.y=0
         self.move_flag=False
 
         self.change_action(ActionType.STARTUP)
