@@ -516,7 +516,7 @@ class Pet():
         self.y=0
         self.move_flag=False
 
-        self.change_action(ActionType.GIFT)
+        self.change_action(ActionType.STARTUP)
 
 
 
