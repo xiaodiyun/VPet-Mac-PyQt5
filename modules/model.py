@@ -75,6 +75,12 @@ class BaseAction():
             i=len(self.graph_lists)
         self.graph_lists.insert(i,graph_list)
 
+    def is_finished(self):
+        for graph_index in self.graph_indexes:
+            if graph_index!=-1:
+                return False
+        return True
+
 
     def next_graqh_list(self,i)->Graph:
         """
@@ -89,7 +95,8 @@ class BaseAction():
         else:
             self.graph_indexes[i]=-1
             if all(val == -1 for val in self.graph_indexes):
-                self.reset()
+                pass
+                # self.reset()
             return None
     def reset(self):
         self.graph_indexes = []
@@ -274,7 +281,6 @@ class ActionManager():
                 action = BaseAction(action_name, action_type, animat_type, mood, graph_lists=[cur_gragh_list])  # TODO 此处考虑吃动作
                 if action_type==ActionType.EAT and 'front_lay' in action_name:
                     eat_front_list.append(action)
-
                 if ".LEFT" in path_pattern:
                     action.direction=-1
                 if ".RIGHT" in path_pattern:
@@ -510,7 +516,7 @@ class Pet():
         self.y=0
         self.move_flag=False
 
-        self.change_action(ActionType.STARTUP)
+        self.change_action(ActionType.GIFT)
 
 
 
@@ -543,6 +549,7 @@ class Pet():
         :return: 为什么要不开心的呢？开心or开心的不明显
         """
         mood=random.choice([Mood.HAPPY, Mood.NOMAL])
+        # mood = random.choice([Mood.HAPPY, Mood.HAPPY])
         self.mood=mood
         return mood
 

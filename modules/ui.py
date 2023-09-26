@@ -509,13 +509,26 @@ class PetThread(QThread):
             min_duration = min(sum_durations)
             min_indexes = [i for i, val in enumerate(sum_durations) if val == min_duration]
             graqhs=[]
-            for min_index in min_indexes:
-                graph=self.pet.next_gragh_list(min_index)
-                if graph:
-                    # print(graph.path,min_duration-self.last_duration,sum_durations,self.last_duration,)
-                    graqhs.append(graph)
-            if len(graqhs)<=0:
+            finish_count=0
+            for i,graqh_list in enumerate(graph_lists):
+                if i in min_indexes:
+                    graph = self.pet.next_gragh_list(i)
+                else:
+                    graph=graqh_list[cur_action.graph_indexes[i]]
+
+                graqhs.append(graph)
+                if cur_action.graph_indexes[i]==-1:
+                    finish_count=finish_count+1
+
+            # for min_index in min_indexes:
+            #     graph=self.pet.next_gragh_list(min_index)
+            #     if graph:
+            #         print(graph.path,min_duration-self.last_duration,sum_durations,self.last_duration,)
+            #         graqhs.append(graph)
+            # print('====')
+            if cur_action.is_finished():
                 self.last_duration=0
+                cur_action.reset()
                 action = self.pet.next_action()  # type: BaseAction
                 self.pet.direction = action.direction
               # print(f"变方向：{self.pet.direction}")
@@ -566,15 +579,19 @@ class GlobalEventWatcher(QThread):
             p=pyautogui.position()
             if p.x>=self.pet.x and p.x<=self.pet.x+settings.WINDOW_WIDTH and p.y>=self.pet.y and p.y<=self.pet.y+settings.WINDOW_HEIGHT:
                 if p.x!=self.last_x or p.y!=self.last_y:
+
                     self.onmousemove(p.x,p.y)
-                    time.sleep(0.1)
-                    continue
                 self.last_x = p.x
                 self.last_y = p.y
+                time.sleep(0.1)
+
             else:
+                # if self.pet.cur_action.action_type in (ActionType.TOUCH_HEAD,ActionType.TOUCH_BODY):
+                #     self.pet.next_action(AnimatType.C_END)
+
                 self.reset_touch()
 
-            time.sleep(1)
+                time.sleep(1)
 
 
     def reset_touch(self):
@@ -595,13 +612,16 @@ class GlobalEventWatcher(QThread):
 
 
     def touch_head(self):
-        print("触发")
+
         if self.touch_head_count>5:
+
             self.pet.change_action(ActionType.TOUCH_HEAD)
+            # self.pet.cur_seq_action.loop_times=99999
             self.reset_touch()
 
     def touch_body(self):
         if self.touch_body_count>5:
             self.pet.change_action(ActionType.TOUCH_BODY)
+            # self.pet.cur_seq_action.loop_times = 99999
             self.reset_touch()
 

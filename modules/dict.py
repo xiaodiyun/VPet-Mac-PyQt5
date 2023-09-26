@@ -64,6 +64,7 @@ class ActionType(Enum):
     """音乐"""
     EAT='EAT'
     DRINK='DRINK'
+    GIFT='GIFT'
 
 """
 动作类型
