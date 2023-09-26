@@ -30,25 +30,29 @@ class DesktopPet(QMainWindow):
         self.long_press_timer.setInterval(250)  # 长按判断时间
         self.long_press_timer.timeout.connect(self.raise_pet)
 
-        self.touch_head_timer=QTimer() #摸头定时器
-        self.touch_head_timer.setTimerType(True)
-        self.touch_head_timer.setInterval(1000)
-        self.touch_head_timer.timeout.connect(self.touch_head)
-        self.touch_head_count=0
 
-        self.touch_body_timer = QTimer()  # 摸头定时器
-        self.touch_body_timer.setTimerType(True)
-        self.touch_body_timer.setInterval(1000)
-        self.touch_body_timer.timeout.connect(self.touch_body)
-        self.touch_body_count = 0
+        if settings.CPU_FRIEND:
+            self.watcher = GlobalEventWatcher(self.pet)
+            self.watcher.start()
+        else:
+            self.touch_head_timer=QTimer() #摸头定时器
+            self.touch_head_timer.setTimerType(True)
+            self.touch_head_timer.setInterval(1000)
+            self.touch_head_timer.timeout.connect(self.touch_head)
+            self.touch_head_count=0
 
+            self.touch_body_timer = QTimer()  # 摸头定时器
+            self.touch_body_timer.setTimerType(True)
+            self.touch_body_timer.setInterval(1000)
+            self.touch_body_timer.timeout.connect(self.touch_body)
+            self.touch_body_count = 0
 
         self.move_thread = MoveThread(self.pet)  # 独立的移动动作信号线程
         self.move_thread.signal.connect(self.move)
+
         self.action_thread = PetThread(self.pet)
         self.action_thread.signal.connect(self.one_action)
-        self.watcher = GlobalEventWatcher(self.pet)
-        self.watcher.start()
+
 
         self.drag_flag = False  # 用于判断是否是点击后移动
 
@@ -290,7 +294,7 @@ class DesktopPet(QMainWindow):
                 self.raise_pet()
             self.move_to(delta_point + abs_window_pos)
             event.accept()
-        elif self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL): #判断摸摸
+        elif (not settings.CPU_FRIEND) and self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL): #判断摸摸
             if event.pos().y()<=210/460*settings.WINDOW_HEIGHT:
                 if self.touch_head_timer.isActive()==False:
                     self.touch_head_timer.start()
@@ -544,10 +548,16 @@ class GlobalEventWatcher(QThread):
     def __init__(self, pet:Pet):
         super().__init__()
         self.pet=pet
-        self.interval=2
+
         self.closed=True
         self.last_x=0
         self.last_y=0
+
+        self.touch_head_count = 0
+        self.touch_body_count = 0
+
+
+
 
 
     def run(self):
@@ -557,25 +567,41 @@ class GlobalEventWatcher(QThread):
             if p.x>=self.pet.x and p.x<=self.pet.x+settings.WINDOW_WIDTH and p.y>=self.pet.y and p.y<=self.pet.y+settings.WINDOW_HEIGHT:
                 if p.x!=self.last_x or p.y!=self.last_y:
                     self.onmousemove(p.x,p.y)
+                    time.sleep(0.1)
+                    continue
                 self.last_x = p.x
                 self.last_y = p.y
-            time.sleep(self.interval)
+            else:
+                self.reset_touch()
+
+            time.sleep(1)
 
 
+    def reset_touch(self):
+        self.touch_head_count = 0
+        self.touch_body_count = 0
 
     def onmousemove(self,x,y):
-        print('onmousemove')
-        # if event.pos().y() <= 210 / 460 * settings.WINDOW_HEIGHT:
-        #     if self.touch_head_timer.isActive() == False:
-        #         self.touch_head_timer.start()
-        #     else:
-        #         self.touch_head_count = self.touch_head_count + 1
-        #         # print(self.touch_head_count)
-        # else:
-        #     if self.touch_body_timer.isActive() == False:
-        #         self.touch_body_timer.start()
-        #     else:
-        #         self.touch_body_count = self.touch_body_count + 1
+
+        if self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL):
+            if y-self.pet.y <= 210 / 460 * settings.WINDOW_HEIGHT:
+                self.touch_head_count = self.touch_head_count + 1
+                self.touch_head()
+            else:
+                self.touch_body_count = self.touch_body_count + 1
+                self.touch_body()
+        else:
+            self.reset_touch()
 
 
+    def touch_head(self):
+        print("触发")
+        if self.touch_head_count>5:
+            self.pet.change_action(ActionType.TOUCH_HEAD)
+            self.reset_touch()
+
+    def touch_body(self):
+        if self.touch_body_count>5:
+            self.pet.change_action(ActionType.TOUCH_BODY)
+            self.reset_touch()
 
