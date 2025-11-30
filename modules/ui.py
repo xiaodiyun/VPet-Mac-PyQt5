@@ -2,8 +2,8 @@ import random, sys
 import time
 
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QTimer, QPoint, QThread, pyqtSignal, Qt, QRect
-from PyQt5.QtGui import QPainter, QCursor, QBrush,QMouseEvent
+from PyQt5.QtCore import QTimer, QPoint, QThread, pyqtSignal, Qt, QRect,QMutex
+from PyQt5.QtGui import QPainter, QCursor, QBrush,QMouseEvent,QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
 
 from . import settings
@@ -14,16 +14,21 @@ import threading
 import pyperclip
 import traceback
 import pyautogui
+import subprocess
+
+import numpy as np
 
 
-
+def call_back(indata, frames, time, status):
+    rms = np.sqrt(np.mean(indata ** 2))
+    # print((rms))
 class DesktopPet(QMainWindow):
     """桌宠核心类"""
 
     def __init__(self):
         super(DesktopPet, self).__init__(None)
         self.pet = Pet()
-
+        self.mutex = QMutex()
         # 长按定时器，长按或短按+移动会触发宠物提起动作
         self.long_press_timer = QTimer()
         self.long_press_timer.setSingleShot(True)
@@ -31,9 +36,11 @@ class DesktopPet(QMainWindow):
         self.long_press_timer.timeout.connect(self.raise_pet)
 
 
-        if settings.CPU_FRIEND:
+        if settings.CPU_KILLER:
             self.watcher = GlobalEventWatcher(self.pet)
             self.watcher.start()
+
+
         else:
             self.touch_head_timer=QTimer() #摸头定时器
             self.touch_head_timer.setTimerType(True)
@@ -54,8 +61,8 @@ class DesktopPet(QMainWindow):
         self.action_thread.signal.connect(self.one_action)
 
 
-        self.drag_flag = False  # 用于判断是否是点击后移动
-
+        self.drag_flag = False  # 拖拽标志位
+        self.pinch_flag = False  # 捏脸标注位
         self.painter_offset_y = 0  # 绘图的y轴偏移量
 
         self.initUI()
@@ -67,13 +74,21 @@ class DesktopPet(QMainWindow):
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
 
-        self.move(QPoint(settings.INIT_POS_X, settings.INIT_POS_Y))
 
-        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.move(QPoint(settings.INIT_POS_X, settings.INIT_POS_Y))
+        # TODO
+        self.setAttribute(Qt.WA_NoSystemBackground,True)
+        self.setAttribute(Qt.WA_TranslucentBackground,True)
+
 
         self.resize(settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
         self.setMouseTracking(True)  # 启用鼠标追踪功能
         self.setAcceptDrops(True) #启用拖文件检测
+
+
+
+
+
 
 
     def move(self, a0: QtCore.QPoint) -> None:
@@ -234,6 +249,18 @@ class DesktopPet(QMainWindow):
         self.pet.y = a0.y()
         return True
 
+
+    def pinch_pet(self):
+        rel_cursor_pos = self.mapFromGlobal(QCursor.pos())
+        abs_window_pos = self.pos()
+
+        x = int(-settings.WINDOW_WIDTH / 346 * 113 + rel_cursor_pos.x() + abs_window_pos.x())
+        y = int(-settings.WINDOW_WIDTH / 346 * 106 + rel_cursor_pos.y() + abs_window_pos.y())
+
+        # self.pet.change_action(ActionType.RAISED, interrupt=4)
+        # self.action_thread.wakeup()
+        self.move_to(QPoint(x, y))
+
     def raise_pet(self):
 
         rel_cursor_pos = self.mapFromGlobal(QCursor.pos())
@@ -243,7 +270,7 @@ class DesktopPet(QMainWindow):
         y = int(-settings.WINDOW_WIDTH / 346 * 86 + rel_cursor_pos.y() + abs_window_pos.y())
 
 
-        self.pet.change_action(ActionType.RAISED,interrupt=3)
+        self.pet.change_action(ActionType.RAISED,interrupt=4)
         self.action_thread.wakeup()
         self.move_to(QPoint(x, y))
 
@@ -258,7 +285,17 @@ class DesktopPet(QMainWindow):
         self.touch_head_count = 0
         self.touch_body_count = 0
         if event.button() == Qt.MouseButton.LeftButton:
+            # print(event.pos().x(), event.pos().y())
+            # print( f"[{250 / 825 * settings.WINDOW_WIDTH} , {420 / 825 * settings.WINDOW_WIDTH}]",f"[{200 / 825 * settings.WINDOW_HEIGHT} , {400 / 825 * settings.WINDOW_HEIGHT}]")
 
+            # print((event.pos().y() <= 200 / 825 * settings.WINDOW_HEIGHT and event.pos().y() >= 400 / 825 * settings.WINDOW_HEIGHT)  and (event.pos().y() >= 250 / 825 * settings.WINDOW_WIDTH and  event.pos().y() <= 420 / 825 * settings.WINDOW_WIDTH))
+
+            if (event.pos().y() >= 200 / 825 * settings.WINDOW_HEIGHT and event.pos().y() <= 400 / 825 * settings.WINDOW_HEIGHT)  and (event.pos().x() >= 250 / 825 * settings.WINDOW_WIDTH and  event.pos().x() <= 420 / 825 * settings.WINDOW_WIDTH):
+                self.pet.change_action(ActionType.PINCH, interrupt=4)
+                # self.pet.change_action(ActionType.RAISED, interrupt=4)
+                self.action_thread.wakeup()
+                self.pinch_flag = True
+                return
             if not self.drag_flag:
 
                 self.long_press_timer.start()
@@ -270,6 +307,11 @@ class DesktopPet(QMainWindow):
     def mouseReleaseEvent(self, event):
 
         if event.button() == Qt.MouseButton.LeftButton:
+            if self.pet.cur_action.action_type == ActionType.PINCH:
+                self.pet.change_action(ActionType.DEFAULT, interrupt=2)
+                self.action_thread.wakeup()
+                self.pinch_flag = False
+                return
 
             if  self.drag_flag and self.pet.cur_action.action_type == ActionType.RAISED and self.pet.cur_action.animat_type!=AnimatType.C_END:
                 # self.raise_thread.close()
@@ -282,9 +324,12 @@ class DesktopPet(QMainWindow):
 
 
     def mouseMoveEvent(self, event:QMouseEvent):
-        if self.drag_flag:
+        if self.pinch_flag:
+            if self.pet.cur_action.action_type not in (ActionType.RAISED,ActionType.CLIMB,ActionType.CLIMB_TOP) or (self.pet.cur_action.action_type==ActionType.RAISED and self.pet.cur_action.animat_type==AnimatType.C_END):
+                self.pinch_pet()
+            event.accept()
+        elif self.drag_flag:
             rel_cursor_pos = event.pos()
-
             abs_window_pos = self.pos()
             delta_x = int(-settings.WINDOW_WIDTH / 346 * 203 + rel_cursor_pos.x())
             delta_y = int(-settings.WINDOW_WIDTH / 346 * 88 + rel_cursor_pos.y())
@@ -294,7 +339,7 @@ class DesktopPet(QMainWindow):
                 self.raise_pet()
             self.move_to(delta_point + abs_window_pos)
             event.accept()
-        elif (not settings.CPU_FRIEND) and self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL): #判断摸摸
+        elif  (not settings.CPU_KILLER) and self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL): #判断摸摸
             if event.pos().y()<=210/460*settings.WINDOW_HEIGHT:
                 if self.touch_head_timer.isActive()==False:
                     self.touch_head_timer.start()
@@ -336,8 +381,8 @@ class DesktopPet(QMainWindow):
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
-            self.pet.change_action(ActionType.WORK_CLEAN, interrupt=4)
-            self.pet.cur_seq_action.loop_times=999999
+            self.pet.change_action(ActionType.WORK_CLEAN, interrupt=3)
+            # self.pet.cur_seq_action.loop_times=999999
             file_path = event.mimeData().urls()[0].toLocalFile()
             pyperclip.copy(file_path)
             event.accept()
@@ -368,10 +413,23 @@ class DesktopPet(QMainWindow):
         """绘图"""
 
         if hasattr(self, "graqhs"):
+
+
+
             painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)  # 抗锯齿
+            painter.setRenderHint(QPainter.SmoothPixmapTransform)  # 平滑像素变换
+            painter.setRenderHint(QPainter.TextAntialiasing)
+
+
+            # painter.setCompositionMode(QPainter.CompositionMode_Clear)
+            # painter.fillRect(self.rect(), Qt.transparent)  # 使用 Qt.transparent 填充
+
+            # 恢复到 SourceOver 模式进行图片绘制
+            # painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
             painter.translate(0, self.painter_offset_y)
-            # print(self.graqhs)
+
             for graqh in self.graqhs: # type:Graph
                 if graqh.width==0 or graqh.height==0:
                     return
@@ -380,12 +438,16 @@ class DesktopPet(QMainWindow):
                 w=graqh.width or settings.WINDOW_WIDTH
                 h=graqh.height or settings.WINDOW_HEIGHT
                 cut_area=graqh.cut_area
+                # print(graqh.path)
                 if len(cut_area)==4:
 
-                    painter.drawImage(QRect(x, y, w, h), graqh.qimage,QRect(*cut_area))
+                    painter.drawPixmap(QRect(x, y, w, h), graqh.qpixmap,QRect(*cut_area))
+
                 else:
-                    # print()
-                    painter.drawImage(QRect(x, y, w, h), graqh.qimage)
+
+                    painter.drawPixmap(QRect(x, y, w, h), graqh.qpixmap)
+
+
 
 
 
@@ -404,9 +466,10 @@ class DesktopPet(QMainWindow):
     def one_action(self, graqhs):
 
         self.graqhs = graqhs
-        # import datetime
-        # print(datetime.datetime.now())
+        self.mutex.lock()
+        # time.sleep(1)
         self.update()
+        self.mutex.unlock()
 
         if self.pet.cur_action.action_type == ActionType.MOVE and not self.pet.move_flag:
 
@@ -467,7 +530,7 @@ class PetThread(QThread):
         self.pet = pet
         self.closed = True
         self.e=None
-        self.last_duration=0
+
         self.last_action_count=0
 
         # self.next_animat_type=None
@@ -477,22 +540,28 @@ class PetThread(QThread):
         while not self.closed:
             cur_action=self.pet.cur_action
             # print(cur_action.direction,cur_action.action_type,cur_action.graph_indexes)
+
             graph_lists=cur_action.graph_lists
-            if self.pet.action_count != self.last_action_count:
-                self.last_duration = 0
-                self.last_action_count = self.pet.action_count
-                self.pet.direction=cur_action.direction
+
+            # if self.pet.action_count != self.last_action_count:
+            #     self.last_duration = 0
+            #
+            #     self.last_action_count = self.pet.action_count
+            #     self.pet.direction=cur_action.direction
 
 
 
-            if self.pet.action_count == 0 and self.pet.cur_action.graph_indexes[0] == 0:
-                time.sleep(0.5)
-                """
+            # if self.pet.action_count == 0 and self.pet.cur_action.graph_indexes[0] == 0:
+            #     time.sleep(0.5)
+            """
         感觉像是什么东西没有加载完全？总之添加这个可以一定程度解决部分情况下，图片有边缘覆盖不了的问题，应该只有垃圾mac会遇到这样的问题。
         应该是底层信号槽机制有点问题，见：
            https://stackoverflow.com/questions/62530793/pyqt-widget-refresh-behavior-different-when-clicking-button-with-mouse-or-keyboa
            https://bugreports.qt.io/browse/QTBUG-42827
            https://stackoverflow.com/questions/30728820/refreshing-a-qwidget
+                
+        20251123
+        喵的，换了个mac电脑就没有问题了，当年m1底层兼容性不太行啊 
                 """
 
             sum_durations = []
@@ -509,7 +578,7 @@ class PetThread(QThread):
             min_duration = min(sum_durations)
             min_indexes = [i for i, val in enumerate(sum_durations) if val == min_duration]
             graqhs=[]
-            finish_count=0
+
             for i,graqh_list in enumerate(graph_lists):
                 if i in min_indexes:
                     graph = self.pet.next_gragh_list(i)
@@ -517,8 +586,8 @@ class PetThread(QThread):
                     graph=graqh_list[cur_action.graph_indexes[i]]
 
                 graqhs.append(graph)
-                if cur_action.graph_indexes[i]==-1:
-                    finish_count=finish_count+1
+                # if cur_action.graph_indexes[i]==-1:
+                #     finish_count=finish_count+1
 
             # for min_index in min_indexes:
             #     graph=self.pet.next_gragh_list(min_index)
@@ -527,8 +596,7 @@ class PetThread(QThread):
             #         graqhs.append(graph)
             # print('====')
             if cur_action.is_finished():
-                self.last_duration=0
-                cur_action.reset()
+                self.pet.action_reset(cur_action)
                 action = self.pet.next_action()  # type: BaseAction
                 self.pet.direction = action.direction
               # print(f"变方向：{self.pet.direction}")
@@ -536,10 +604,10 @@ class PetThread(QThread):
 
             self.signal.emit(graqhs)
             self.e = threading.Event()
+            # print((min_duration-self.pet.last_duration)/1000,cur_action.graph_indexes,self.pet.cur_action.graph_indexes,self.pet.last_duration)
+            self.e.wait(timeout=(min_duration-self.pet.last_duration)/1000)
 
-            self.e.wait(timeout=(min_duration-self.last_duration)/1000)
-
-            self.last_duration=min_duration
+            self.pet.last_duration=min_duration
 
     def close(self, force=False):
         if not force:
@@ -553,7 +621,7 @@ class PetThread(QThread):
 
 
 
-class GlobalEventWatcher(QThread):
+class GlobalEventWatcher(threading.Thread):
     """
     电脑全局的事件监控，用于越过qt必须要获取焦点才能监听事件的限制
     """
@@ -568,6 +636,13 @@ class GlobalEventWatcher(QThread):
 
         self.touch_head_count = 0
         self.touch_body_count = 0
+        self.sleep_count=0
+        self.interval=1
+
+        self.sound_map={}
+
+        self.moveflag=False
+
 
 
 
@@ -575,53 +650,103 @@ class GlobalEventWatcher(QThread):
 
     def run(self):
         self.closed = False
+        last_px=0
+        last_py=0
+        mouse_stop_count=0
         while not self.closed:
             p=pyautogui.position()
+
+            if mouse_stop_count == 0 and self.pet.cur_action.action_type==ActionType.SLEEP:
+                self.pet.next_action(AnimatType.C_END)
+                continue
+            if p.x==last_px and p.y==last_py:
+                mouse_stop_count=mouse_stop_count+1
+                if mouse_stop_count>=settings.SLEEP_COUNT and self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL):
+                    self.pet.change_action(ActionType.SLEEP,interrupt=4)
+
+                    continue
+            else:
+                mouse_stop_count = 0
+            last_px=p.x
+            last_py=p.y
             if p.x>=self.pet.x and p.x<=self.pet.x+settings.WINDOW_WIDTH and p.y>=self.pet.y and p.y<=self.pet.y+settings.WINDOW_HEIGHT:
                 if p.x!=self.last_x or p.y!=self.last_y:
-
                     self.onmousemove(p.x,p.y)
                 self.last_x = p.x
                 self.last_y = p.y
+
                 time.sleep(0.1)
-
+                self.moveflag=True
+                continue
             else:
-                # if self.pet.cur_action.action_type in (ActionType.TOUCH_HEAD,ActionType.TOUCH_BODY):
-                #     self.pet.next_action(AnimatType.C_END)
 
-                self.reset_touch()
+                if self.moveflag:
+                    self.moveflag=False
 
+                    self.onmouseleave()
+
+                # if self.check_screen_sleep()==True:
+                #     self.pet.change_action(ActionType.SLEEP,interrupt=3)
+                #     self.pet.cur_seq_action.loop_count = 0
                 time.sleep(1)
 
+    # def check_screen_sleep(self):
+    #     """
+    #     https://stackoverflow.com/questions/11505255/osx-check-if-the-screen-is-locked
+    #     """
+    #     # return True
+    #     cmd = "bash modules/check_sleep.sh"
+    #     try:
+    #         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    #         print(result.stdout.strip())
+    #         print(result.stderr.strip())
+    #         if result.stdout.strip()=='Screen locked':
+    #             # print(f'{datetime.datetime.now()} true')
+    #             return True
+    #         else:
+    #             # print(f'{datetime.datetime.now()} false')
+    #             return False
+    #     except:
+    #         traceback.print_exception()
+    #         return False
 
     def reset_touch(self):
         self.touch_head_count = 0
         self.touch_body_count = 0
 
-    def onmousemove(self,x,y):
 
+    def onmouseleave(self):
+        pass
+        # if self.pet.cur_action.action_type in (ActionType.TOUCH_HEAD, ActionType.TOUCH_BODY):
+        #     self.pet.next_action(AnimatType.C_END)
+        #     self.reset_touch()
+    def onmousemove(self,x,y):
         if self.pet.cur_action.action_type in(ActionType.DEFAULT,ActionType.IDEL):
             if y-self.pet.y <= 210 / 460 * settings.WINDOW_HEIGHT:
+
                 self.touch_head_count = self.touch_head_count + 1
                 self.touch_head()
             else:
+
                 self.touch_body_count = self.touch_body_count + 1
                 self.touch_body()
-        else:
-            self.reset_touch()
+
+        # elif self.pet.cur_action.action_type in(ActionType.TOUCH_HEAD,ActionType.TOUCH_BODY):
+
 
 
     def touch_head(self):
 
-        if self.touch_head_count>5:
+        if self.touch_head_count>20:
+            # print(f"-{self.pet.cur_action.graph_indexes},{self.pet.last_duration}")
+            self.pet.change_action(ActionType.TOUCH_HEAD,interrupt=3)
+            # print(self.pet.cur_action.graph_indexes,self.pet.last_duration)
+            # pass
 
-            self.pet.change_action(ActionType.TOUCH_HEAD)
-            # self.pet.cur_seq_action.loop_times=99999
-            self.reset_touch()
+            # self.reset_touch()
 
     def touch_body(self):
-        if self.touch_body_count>5:
-            self.pet.change_action(ActionType.TOUCH_BODY)
-            # self.pet.cur_seq_action.loop_times = 99999
-            self.reset_touch()
+        if self.touch_body_count>20:
+            self.pet.change_action(ActionType.TOUCH_BODY,interrupt=3)
+            # self.reset_touch()
 

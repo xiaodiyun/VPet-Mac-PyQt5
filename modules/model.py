@@ -2,7 +2,8 @@
 from enum import Enum
 from . import settings
 from .dict import Mood,ActionType,AnimatType,ActionStatus
-from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QPixmap,QTransform
+from PyQt5.QtCore import Qt
 import os
 from pprint import pprint
 from dataclasses import dataclass,field
@@ -20,7 +21,7 @@ class Graph():
     """图片位置"""
     duration:int
     """图片持续时间"""
-    qimage:QImage=None
+    qpixmap:QPixmap=None
     """图片qt实体类"""
 
     x: int=None
@@ -99,9 +100,9 @@ class BaseAction():
                 # self.reset()
             return None
     def reset(self):
-        self.graph_indexes = []
-        for i in range(len(self.graph_lists)):
-            self.graph_indexes.append(0)
+        self.graph_indexes = [0 for i in range(len(self.graph_lists))]
+        # for i in range(len(self.graph_lists)):
+        #     self.graph_indexes.append(0)
 
 
 
@@ -340,14 +341,19 @@ class ActionManager():
 
     def load_one_action(self,action:BaseAction):
         """
-        加载一个动作下所有图片的QImage类。主要是为了懒加载
+        加载一个动作下所有图片的QPixmap类。主要是为了懒加载
         :param action:动作类
         :return:返回该动作
         """
         for graph_list in action.graph_lists:
             for graph in graph_list:
-
-                graph.qimage=QImage(graph.path)
+                # transform = QTransform()
+                # transform.rotate(-60)
+                #
+                # # 使用 QPixmap.transformed() 方法应用旋转
+                # rotated_image = QPixmap(graph.path).transformed(transform, Qt.SmoothTransformation)
+                # graph.qpixmap= rotated_image
+                graph.qpixmap=QPixmap(graph.path)
 
         action.if_load=True
         return action
@@ -460,10 +466,10 @@ class ActionManager():
                     iconpath=key
                     break
 
-        qimage=QImage(iconpath)
-        qimage=qimage.scaled(30,30)
-        if qimage.isNull():
-            qimage=QImage(settings.FILE_ICON_DEFAULT)
+        qpixmap=QPixmap(iconpath)
+        qpixmap=qpixmap.scaled(30,30)
+        if qpixmap.isNull():
+            qpixmap=QPixmap(settings.FILE_ICON_DEFAULT)
         #
         food_animats=[ #此处动画实在兼容不动了，在调整宠物大小之后，一定会不兼容
             # 动画时长,x,y,w,h,截取区域(吃文件=文件图片高度截取)
@@ -473,18 +479,18 @@ class ActionManager():
             [125,60.25, 50, 30, 30,[]],
             [375,60.25, 50, 30, 30,[]],
             [125,60.25, 48, 30, 30,[]],
-            [125,60.6, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
-            [125,60.5, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
-            [125,60.5, 56, 30, 30,[0,qimage.width()/3,qimage.height(),qimage.width()]],
-            [125,60.6, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
-            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
-            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
-            [125,60.5, 60, 30, 30,[0,qimage.width()/4,qimage.height(),qimage.width()]],
+            [125,60.6, 56, 30, 30,[0,qpixmap.width()/3,qpixmap.height(),qpixmap.width()]],
+            [125,60.5, 56, 30, 30,[0,qpixmap.width()/3,qpixmap.height(),qpixmap.width()]],
+            [125,60.5, 56, 30, 30,[0,qpixmap.width()/3,qpixmap.height(),qpixmap.width()]],
+            [125,60.6, 60, 30, 30,[0,qpixmap.width()/4,qpixmap.height(),qpixmap.width()]],
+            [125,60.5, 60, 30, 30,[0,qpixmap.width()/4,qpixmap.height(),qpixmap.width()]],
+            [125,60.5, 60, 30, 30,[0,qpixmap.width()/4,qpixmap.height(),qpixmap.width()]],
+            [125,60.5, 60, 30, 30,[0,qpixmap.width()/4,qpixmap.height(),qpixmap.width()]],
             [375,60.5, 48, 0, 0,[]],
         ]
         graqh_list=[]
         for food_animat in food_animats:
-            graqh=Graph(iconpath,food_animat[0],qimage)
+            graqh=Graph(iconpath,food_animat[0],qpixmap)
             graqh.x=food_animat[1]
             graqh.y = food_animat[2]
             graqh.width = food_animat[3]
@@ -517,6 +523,7 @@ class Pet():
         self.move_flag=False
 
         self.change_action(ActionType.STARTUP)
+        self.last_duration=0
 
 
 
@@ -553,7 +560,12 @@ class Pet():
         self.mood=mood
         return mood
 
-
+    def action_reset(self,action:BaseAction=None):
+        if action:
+            action.reset()
+        elif self.cur_action:
+            self.cur_action.reset()
+        self.last_duration = 0
 
     def change_action(self,action_type:ActionType=None,direction:int=None,interrupt=4,params=[]):
         """
@@ -563,10 +575,11 @@ class Pet():
         :param interrupt: 打断等级。1-等当前动作做完，再进行新动作；2-强制当前动作进入end阶段，然后进入新动作；3-强制打断当前动作，进入新动作，如果当前正在做这个动作的话，则不处理 4-强制打断当前动作，进入新动作；
         :return:None
         """
-        if self.cur_action and not(interrupt==3 and  self.cur_action.action_type==action_type and self.cur_action.direction==direction):
-            self.cur_action.reset()
-        if interrupt==4 or (interrupt==3 and not( self.cur_action.action_type==action_type and self.cur_action.direction==direction)):
+        if self.cur_action and not(interrupt==3 and self.cur_action.action_type==action_type and (self.cur_action.direction==direction or  (direction==None and self.cur_action.direction==0))):
+            self.action_reset()
 
+
+        if interrupt==4 or (interrupt==3 and not( self.cur_action.action_type==action_type and (self.cur_action.direction==direction or direction==None and self.cur_action.direction==0))):
 
             self.cur_seq_action=self.get_seq_action(action_type=action_type,direction=direction,params=params)
             self.cur_action=self.cur_seq_action.next_action()
@@ -624,6 +637,8 @@ class Pet():
         """
 
         assert action_type!=None
+
+        self.action_reset()
         seq_action=action_manager.get_seq_actions(action_type=action_type, mood=self.mood,direction=direction,params=params)
 
         if seq_action==None:
@@ -660,9 +675,10 @@ class Pet():
             graqh=self.cur_action.next_graqh_list(i)
             return graqh
             # if not graqh:
+            #     self.action_reset()
             #     self.next_action()
             #     # print("aaa")
-            #     return self.next_gragh()
+            #     return self.next_graqh_list()
             # return graqh
         else:
             # self.next_action()
