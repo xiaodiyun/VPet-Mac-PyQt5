@@ -39,8 +39,11 @@
 ![吃吃吃](tutorial/eat.gif)
 <br><br>
 - 加入捏脸交互 ✅
+<br><br>
 ![捏捏捏](tutorial/pinch.gif)
+<br><br>
 - 增加菜单控制 ✅
+<br><br>
 ![menu](tutorial/menu.gif)
 - 已经没活了。
 
