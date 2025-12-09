@@ -13,6 +13,11 @@
 ### 版权声明
 动画文件版权归 [源项目](https://github.com/LorisYounger/VPet) 所有
 
+### 运行方式
+> 带菜单启动：`main_with_menu.py`。需要额外`pip install pyobjc`
+> 
+> 不带菜单启动：`main.py`
+
 
 ### 开发计划
 - 原地动作播放 ✅
@@ -35,5 +40,7 @@
 <br><br>
 - 加入捏脸交互 ✅
 ![捏捏捏](tutorial/pinch.gif)
+- 增加菜单控制 ✅
+![menu](tutorial/menu.gif)
 - 已经没活了。
 

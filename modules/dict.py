@@ -65,9 +65,9 @@ class ActionType(Enum):
     EAT='EAT'
     DRINK='DRINK'
     GIFT='GIFT',
-    BDAY="BDAY"
     THINK = 'THINK'
     PINCH='PINCH'
+    """捏脸"""
 
 """
 动作类型

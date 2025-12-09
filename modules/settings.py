@@ -87,7 +87,7 @@ COMMON_ACTION_WEIGHT = {
     ActionType.STATE: 5,
     ActionType.WORK: 3,
     ActionType.SAY: 1,
-    ActionType.IDEL: 8,
+    ActionType.IDEL: 1,
     ActionType.THINK: 1
 }
 # COMMON_ACTION_WEIGHT = {
@@ -112,6 +112,26 @@ COMBO_ACTION_TIMES = {
 }
 """
 宠物在循环做事时，循环的次数。不在里面的默认无限次
+"""
+
+
+
+MENU_MAP={
+    '默认':ActionType.DEFAULT,
+    '移动':ActionType.MOVE,
+    '摸头':ActionType.TOUCH_HEAD,
+    '摸身子':ActionType.TOUCH_BODY,
+    '待机':ActionType.IDEL,
+    # '睡觉':ActionType.SLEEP,
+    '说话':ActionType.SAY,
+    '坐下':ActionType.STATE,
+    '舔屏':ActionType.WORK_CLEAN,
+    '工作':ActionType.WORK,
+    '音乐':ActionType.MUSIC,
+    '思考':ActionType.THINK
+}
+"""
+菜单栏显示啥
 """
 
 

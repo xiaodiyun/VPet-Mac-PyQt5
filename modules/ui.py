@@ -4,7 +4,7 @@ import time
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QTimer, QPoint, QThread, pyqtSignal, Qt, QRect,QMutex
 from PyQt5.QtGui import QPainter, QCursor, QBrush,QMouseEvent,QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QSizePolicy,QAction
 
 from . import settings
 from .model import Pet, BaseAction,Graph
@@ -39,8 +39,6 @@ class DesktopPet(QMainWindow):
         if settings.CPU_KILLER:
             self.watcher = GlobalEventWatcher(self.pet)
             self.watcher.start()
-
-
         else:
             self.touch_head_timer=QTimer() #摸头定时器
             self.touch_head_timer.setTimerType(True)
@@ -65,10 +63,11 @@ class DesktopPet(QMainWindow):
         self.pinch_flag = False  # 捏脸标注位
         self.painter_offset_y = 0  # 绘图的y轴偏移量
 
-        self.initUI()
+        self.init_ui()
+        self.init_menu()
         self.play()
 
-    def initUI(self):
+    def init_ui(self):
         # self.desktop = QApplication.instance().screens()
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
@@ -88,7 +87,13 @@ class DesktopPet(QMainWindow):
 
 
 
+    def init_menu(self):
+        menubar = self.menuBar()
 
+        app_menu = menubar.addMenu("App")
+        exit_action = QAction("Quit", self)
+        exit_action.triggered.connect(self.close)
+        app_menu.addAction(exit_action)
 
 
     def move(self, a0: QtCore.QPoint) -> None:

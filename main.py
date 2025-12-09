@@ -1,10 +1,6 @@
 import sys
 
 from modules.share import get_application
-
-
-
-
 from  modules.ui import DesktopPet
 # import traceback
 
@@ -18,7 +14,9 @@ from  modules.ui import DesktopPet
 
 
 if __name__ == '__main__':
-    # sys.excepthook = exception_hook
+    # if sys.platform == "darwin":  # macOS
+
+
     pet = DesktopPet()
 
     pet.show()
